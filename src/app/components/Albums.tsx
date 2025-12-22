@@ -42,14 +42,14 @@ export function Albums({ onAlbumClick }: AlbumsProps) {
               {themeAlbums.map((album) => (
                 <div 
                   key={album.id} 
-                  className="group w-80 flex-shrink-0 cursor-pointer"
+                  className="group w-[25rem] flex-shrink-0 cursor-pointer"
                   onClick={() => onAlbumClick(album.id)}
                 >
                   {/* Image Container */}
                   <div className="relative aspect-[4/3] rounded-lg overflow-hidden mb-3">
                     {album.coverPhotoUrl ? (
                       <img
-                        src={getOptimizedImageUrl(album.coverPhotoUrl, 600)}
+                        src={getOptimizedImageUrl(album.coverPhotoUrl, 800)}
                         alt={album.name}
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                         loading="lazy"
