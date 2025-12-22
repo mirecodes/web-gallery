@@ -46,7 +46,7 @@ export function Albums({ onAlbumClick }: AlbumsProps) {
                   onClick={() => onAlbumClick(album.id)}
                 >
                   {/* Image Container */}
-                  <div className="relative aspect-[4/3] rounded-lg overflow-hidden mb-3">
+                  <div className="relative aspect-[4/3] rounded-2xl overflow-hidden mb-3">
                     {album.coverPhotoUrl ? (
                       <img
                         src={getOptimizedImageUrl(album.coverPhotoUrl, 800)}
@@ -62,7 +62,7 @@ export function Albums({ onAlbumClick }: AlbumsProps) {
                     
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300" />
 
-                    <div className="absolute bottom-3 right-3 bg-black/60 text-white px-2.5 py-0.5 rounded-full text-xs backdrop-blur-sm border border-white/10">
+                    <div className="absolute bottom-3 right-3 bg-black/60 text-white px-2.5 py-0.5 rounded-full text-xs backdrop-blur-sm border border-white/10 opacity-75 group-hover:opacity-100 transition-opacity">
                       {album.photoCount} photos
                     </div>
                   </div>
