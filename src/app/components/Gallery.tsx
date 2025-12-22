@@ -33,7 +33,7 @@ export function Gallery({ albumId, onBack }: GalleryProps) {
 
   return (
     <>
-      <div className="max-w-7xl mx-auto px-6 py-12">
+      <div className="max-w-[1600px] mx-auto px-6 py-12">
         {/* Album Header */}
         {albumId && currentAlbum && (
           <div className="mb-8">
@@ -50,27 +50,35 @@ export function Gallery({ albumId, onBack }: GalleryProps) {
         )}
 
         {/* Photo Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-0">
           {filteredPhotos.map((photo) => (
             <div
               key={photo.id}
-              className={`group relative overflow-hidden cursor-pointer rounded aspect-square ${
+              className={`p-1.5 ${
                 photo.aspectRatio === 'landscape'
-                  ? 'md:col-span-2 md:aspect-[3/2]'
-                  : 'md:aspect-[2/3]'
+                  ? 'md:col-span-2'
+                  : ''
               }`}
-              onClick={() => setSelectedPhoto(photo)}
             >
-              <img
-                src={getOptimizedImageUrl(photo.url, 600)}
-                alt={photo.title}
-                loading="lazy"
-                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-              />
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors duration-300 flex items-end p-4 opacity-0 group-hover:opacity-100">
-                <div className="text-white">
-                  <p className="text-sm font-medium">{photo.title}</p>
-                  <p className="text-xs text-white/60">{photo.date}</p>
+              <div
+                className={`group relative overflow-hidden cursor-pointer rounded-lg w-full h-full ${
+                  photo.aspectRatio === 'landscape'
+                    ? 'aspect-[3/2]'
+                    : 'aspect-[3/4]'
+                }`}
+                onClick={() => setSelectedPhoto(photo)}
+              >
+                <img
+                  src={getOptimizedImageUrl(photo.url, 600)}
+                  alt={photo.title}
+                  loading="lazy"
+                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors duration-300 flex items-end p-4 opacity-0 group-hover:opacity-100">
+                  <div className="text-white">
+                    <p className="text-sm font-medium truncate">{photo.title}</p>
+                    <p className="text-xs text-white/60">{photo.date}</p>
+                  </div>
                 </div>
               </div>
             </div>
