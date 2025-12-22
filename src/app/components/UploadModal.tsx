@@ -1,9 +1,10 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useGallery } from '../hooks/useGallery';
-import { X, Upload, Loader2, Plus, Calendar, Camera, MapPin, FileImage, Search, Check } from 'lucide-react';
+import { X, Upload, Loader2, Plus, Calendar, Camera, MapPin, FileImage } from 'lucide-react';
 import exifr from 'exifr';
 import { Progress } from './ui/progress';
 import { getCityFromCoordinates } from '../services/geocoding';
+import { AlbumSelector } from './AlbumSelector';
 
 interface UploadModalProps {
   isOpen: boolean;
@@ -34,8 +35,7 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({ completed: 0, total: 0 });
   
-  const [isSelectingAlbum, setIsSelectingAlbum] = useState(false);
-  const [albumSearchQuery, setAlbumSearchQuery] = useState('');
+  const [isAlbumSelectorOpen, setIsAlbumSelectorOpen] = useState(false);
 
   const { uploadAndAddPhoto, batchUploadPhotos, createAlbum, albums } = useGallery();
 
@@ -85,13 +85,6 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
     extractMeta();
   }, [files]);
 
-  const filteredAlbums = useMemo(() => {
-    return albums.filter(album => 
-      album.name.toLowerCase().includes(albumSearchQuery.toLowerCase()) ||
-      album.theme.toLowerCase().includes(albumSearchQuery.toLowerCase())
-    );
-  }, [albums, albumSearchQuery]);
-
   if (!isOpen) return null;
 
   const resetForm = () => {
@@ -104,8 +97,7 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
     setNewAlbumTheme('');
     setMetadata(null);
     setUploadProgress({ completed: 0, total: 0 });
-    setIsSelectingAlbum(false);
-    setAlbumSearchQuery('');
+    setIsAlbumSelectorOpen(false);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -162,11 +154,10 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
 
   const isSingleFile = files.length === 1;
   const progressValue = uploadProgress.total > 0 ? (uploadProgress.completed / uploadProgress.total) * 100 : 0;
-  const selectedAlbum = albums.find(a => a.id === selectedAlbumId);
 
   return (
     <div className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4">
-      <div className="bg-zinc-900 rounded-lg w-full max-w-md p-6 relative border border-white/10 max-h-[90vh] overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-700">
+      <div className="bg-zinc-900 rounded-lg w-full max-w-md p-6 relative border border-white/10 max-h-[90vh] overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-700 transition-all duration-300">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-white/60 hover:text-white"
@@ -267,44 +258,16 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
             <label className="block text-sm text-white/60 mb-1">Album</label>
             {!isCreatingAlbum ? (
               <div className="space-y-2">
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setIsSelectingAlbum(!isSelectingAlbum)}
-                    className="w-full bg-black/50 border border-white/10 rounded px-3 py-2 text-white text-left focus:outline-none focus:border-white/40"
-                  >
-                    {selectedAlbum ? `${selectedAlbum.name} (${selectedAlbum.theme})` : 'Select an album...'}
-                  </button>
-                  {isSelectingAlbum && (
-                    <div className="absolute z-10 top-full mt-1 w-full bg-zinc-800 border border-white/10 rounded-lg shadow-lg p-2 space-y-2">
-                      <div className="relative">
-                        <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
-                        <input
-                          type="text"
-                          placeholder="Search albums..."
-                          value={albumSearchQuery}
-                          onChange={(e) => setAlbumSearchQuery(e.target.value)}
-                          className="w-full pl-8 pr-2 py-1.5 bg-black/50 border border-white/10 rounded text-sm text-white"
-                        />
-                      </div>
-                      <div className="max-h-40 overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-600">
-                        {filteredAlbums.map(album => (
-                          <button
-                            key={album.id}
-                            type="button"
-                            onClick={() => {
-                              setSelectedAlbumId(album.id);
-                              setIsSelectingAlbum(false);
-                            }}
-                            className="w-full text-left px-2 py-1.5 rounded hover:bg-white/10 flex justify-between items-center"
-                          >
-                            <span className="text-white">{album.name} <span className="text-white/50">({album.theme})</span></span>
-                            {selectedAlbumId === album.id && <Check className="w-4 h-4 text-blue-400" />}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                <div 
+                  className="transition-all duration-300 ease-in-out"
+                  style={{ marginBottom: isAlbumSelectorOpen ? '14rem' : '0' }}
+                >
+                  <AlbumSelector
+                    albums={albums}
+                    selectedAlbumId={selectedAlbumId}
+                    onSelect={setSelectedAlbumId}
+                    onOpenChange={setIsAlbumSelectorOpen}
+                  />
                 </div>
                 <button
                   type="button"
