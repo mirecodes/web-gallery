@@ -1,28 +1,23 @@
 import { useState, useEffect } from 'react';
-import { Search, MapPin } from 'lucide-react';
+import { MapPin } from 'lucide-react';
 import { useGallery } from '../hooks/useGallery';
 import { getOptimizedImageUrl } from '../services/cloudinary';
 import { Photo } from '../types';
 import { PhotoViewer } from './PhotoViewer';
 
 export function Home() {
-  const [searchQuery, setSearchQuery] = useState('');
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [optimalWidth, setOptimalWidth] = useState(1200);
   const { photos, loading, error } = useGallery();
 
-  const filteredPhotos = photos.filter(
-    (photo) =>
-      photo.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      photo.location?.toLowerCase().includes(searchQuery.toLowerCase())
-  ).sort((a, b) => {
+  const sortedPhotos = photos.sort((a, b) => {
     const dateA = new Date(a.takenAt || a.date).getTime();
     const dateB = new Date(b.takenAt || b.date).getTime();
     return dateB - dateA;
   });
 
-  const carouselPhotos = filteredPhotos.slice(0, 12);
+  const carouselPhotos = sortedPhotos.slice(0, 12);
 
   useEffect(() => {
     if (carouselPhotos.length === 0) return;
@@ -66,20 +61,6 @@ export function Home() {
   return (
     <>
       <div className="min-h-[calc(100vh-56px)] px-6 py-12">
-        {/* Search Bar */}
-        <div className="max-w-2xl mx-auto mb-12">
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
-            <input
-              type="text"
-              placeholder="사진 검색..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 rounded-full text-white placeholder-white/40 focus:outline-none focus:border-white/60 transition-colors"
-            />
-          </div>
-        </div>
-
         {/* Featured Photo Slideshow */}
         {currentPhoto && (
           <div className="max-w-6xl mx-auto">
@@ -129,7 +110,7 @@ export function Home() {
         <div className="max-w-6xl mx-auto mt-16">
           <h3 className="text-white mb-6">Recent Photos</h3>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            {filteredPhotos.slice(0, 20).map((photo) => (
+            {sortedPhotos.slice(0, 20).map((photo) => (
               <div
                 key={photo.id}
                 className="aspect-square rounded overflow-hidden cursor-pointer group"
@@ -150,8 +131,8 @@ export function Home() {
       {/* Lightbox */}
       {selectedPhoto && (
         <PhotoViewer
-          photos={filteredPhotos}
-          initialIndex={filteredPhotos.findIndex(p => p.id === selectedPhoto.id)}
+          photos={sortedPhotos}
+          initialIndex={sortedPhotos.findIndex(p => p.id === selectedPhoto.id)}
           onClose={() => setSelectedPhoto(null)}
         />
       )}
