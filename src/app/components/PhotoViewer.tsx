@@ -14,6 +14,8 @@ interface PhotoViewerProps {
 export function PhotoViewer({ photos, initialIndex, onClose, albumName, showThumbnails = false }: PhotoViewerProps) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [showInfo, setShowInfo] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [optimalWidth, setOptimalWidth] = useState(1600); // Default width, will be updated
   const thumbnailScrollRef = useRef<HTMLDivElement>(null);
 
   const currentPhoto = photos[currentIndex];
@@ -31,14 +33,15 @@ export function PhotoViewer({ photos, initialIndex, onClose, albumName, showThum
       if (e.key === 'ArrowLeft') handlePrev();
       if (e.key === 'ArrowRight') handleNext();
       if (e.key === 'Escape') {
-        if (showInfo) setShowInfo(false);
+        if (isFullscreen) setIsFullscreen(false);
+        else if (showInfo) setShowInfo(false);
         else onClose();
       }
       if (e.key === 'i') setShowInfo(s => !s);
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handlePrev, handleNext, onClose, showInfo]);
+  }, [handlePrev, handleNext, onClose, showInfo, isFullscreen]);
 
   // Scroll active thumbnail into view
   useEffect(() => {
@@ -50,6 +53,35 @@ export function PhotoViewer({ photos, initialIndex, onClose, albumName, showThum
     }
   }, [currentIndex, showThumbnails]);
 
+  // Update optimal image width based on screen size and photo aspect ratio
+  useEffect(() => {
+    if (!currentPhoto) return;
+
+    const calculateOptimalWidth = () => {
+      const screenWidth = window.innerWidth;
+      
+      // 1. Limit pixel ratio to 2x to prevent excessive image sizes on high-density displays.
+      const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+      const targetWidth = screenWidth * pixelRatio;
+      
+      // 2. Snap to the next largest breakpoint for better cache efficiency.
+      const breakpoints = [640, 1080, 1600, 1920, 2400]; 
+      let optimal = breakpoints.find(bp => bp >= targetWidth) || 2400;
+
+      // 3. Apply aspect ratio-specific max width.
+      const maxWidth = currentPhoto.aspectRatio === 'portrait' ? 1800 : 2400;
+      
+      // 4. Select the smaller value between the calculated optimal width and the max width.
+      setOptimalWidth(Math.min(optimal, maxWidth));
+    };
+
+    calculateOptimalWidth();
+    
+    // Recalculate on window resize.
+    window.addEventListener('resize', calculateOptimalWidth);
+    return () => window.removeEventListener('resize', calculateOptimalWidth);
+  }, [currentPhoto]);
+
   if (!currentPhoto) {
     return null;
   }
@@ -57,7 +89,11 @@ export function PhotoViewer({ photos, initialIndex, onClose, albumName, showThum
   return (
     <div className="fixed inset-0 z-50 bg-black flex flex-col" onClick={onClose}>
       {/* Top Bar */}
-      <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-20 pointer-events-none">
+      <div 
+        className={`absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-20 pointer-events-none transition-opacity duration-300 ${
+          isFullscreen ? 'opacity-0' : 'opacity-100'
+        }`}
+      >
         <button 
           onClick={(e) => { e.stopPropagation(); onClose(); }}
           className="pointer-events-auto text-white/60 hover:text-white flex items-center gap-2 transition-colors p-2"
@@ -80,21 +116,28 @@ export function PhotoViewer({ photos, initialIndex, onClose, albumName, showThum
       <div className="flex-1 flex overflow-hidden relative" onClick={(e) => e.stopPropagation()}>
         {/* Image Area */}
         <div 
-          className={`relative flex-1 flex items-center justify-center transition-all duration-300 ease-in-out p-4 md:p-12 ${
-            showInfo ? 'mr-80' : 'mr-0'
+          className={`relative flex-1 flex items-center justify-center transition-all duration-300 ease-in-out ${
+            isFullscreen ? 'p-0' : 'p-4 md:p-12'
+          } ${
+            showInfo && !isFullscreen ? 'mr-80' : 'mr-0'
           }`}
+          onClick={() => setIsFullscreen(!isFullscreen)}
         >
           {/* Navigation Buttons */}
           <button 
-            onClick={handlePrev}
-            className="absolute left-4 z-10 text-white/60 hover:text-white transition-colors"
+            onClick={(e) => { e.stopPropagation(); handlePrev(); }}
+            className={`absolute left-4 z-10 text-white/60 hover:text-white transition-all duration-300 ${
+              isFullscreen ? 'opacity-0 hover:opacity-100' : 'opacity-100'
+            }`}
           >
             <ChevronLeft className="w-10 h-10" />
           </button>
           
           <button 
-            onClick={handleNext}
-            className="absolute right-4 z-10 text-white/60 hover:text-white transition-colors"
+            onClick={(e) => { e.stopPropagation(); handleNext(); }}
+            className={`absolute right-4 z-10 text-white/60 hover:text-white transition-all duration-300 ${
+              isFullscreen ? 'opacity-0 hover:opacity-100' : 'opacity-100'
+            }`}
           >
             <ChevronRight className="w-10 h-10" />
           </button>
@@ -102,16 +145,18 @@ export function PhotoViewer({ photos, initialIndex, onClose, albumName, showThum
           {/* Image */}
           <img
             key={currentPhoto.id}
-            src={getOptimizedImageUrl(currentPhoto.url, 1600)}
+            src={getOptimizedImageUrl(currentPhoto.url, optimalWidth)}
             alt={currentPhoto.title}
-            className="max-w-full max-h-full object-contain shadow-2xl animate-fade-in"
+            className={`max-w-full max-h-full object-contain shadow-2xl animate-fade-in cursor-pointer transition-transform duration-300 ${
+              isFullscreen ? 'scale-100' : ''
+            }`}
           />
         </div>
 
         {/* Info Side Panel */}
         <div 
           className={`bg-zinc-900 border-l border-white/10 overflow-y-auto transition-all duration-300 ease-in-out absolute right-0 top-0 bottom-0 z-20 ${
-            showInfo ? 'w-80 translate-x-0' : 'w-0 translate-x-full border-none'
+            showInfo && !isFullscreen ? 'w-80 translate-x-0' : 'w-0 translate-x-full border-none'
           }`}
         >
           <div className="p-6 w-80">
@@ -190,7 +235,12 @@ export function PhotoViewer({ photos, initialIndex, onClose, albumName, showThum
 
       {/* Bottom Indicator Bar */}
       {showThumbnails && (
-        <div className="h-20 bg-black/80 backdrop-blur-sm border-t border-white/10 flex items-center justify-center px-4 z-20" onClick={(e) => e.stopPropagation()}>
+        <div 
+          className={`h-20 bg-black/80 backdrop-blur-sm border-t border-white/10 flex items-center justify-center px-4 z-20 transition-transform duration-300 ${
+            isFullscreen ? 'translate-y-full' : 'translate-y-0'
+          }`} 
+          onClick={(e) => e.stopPropagation()}
+        >
           <div 
             ref={thumbnailScrollRef}
             className="flex gap-2 overflow-x-auto max-w-full px-4 py-2 scrollbar-hide"

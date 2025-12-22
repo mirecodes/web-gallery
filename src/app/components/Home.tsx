@@ -9,6 +9,7 @@ export function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
+  const [optimalWidth, setOptimalWidth] = useState(1200);
   const { photos, loading, error } = useGallery();
 
   const filteredPhotos = photos.filter(
@@ -30,6 +31,34 @@ export function Home() {
     return () => clearInterval(interval);
   }, [filteredPhotos.length]);
 
+  const currentPhoto = filteredPhotos[currentPhotoIndex] || photos[0];
+
+  // Calculate optimal image width based on screen size and pixel density
+  useEffect(() => {
+    if (!currentPhoto) return;
+
+    const calculateOptimalWidth = () => {
+      const screenWidth = window.innerWidth;
+      const pixelRatio = window.devicePixelRatio || 1;
+      
+      // Home slideshow container is max-w-6xl (approx 1152px)
+      // We use the smaller of screen width or container max width
+      const containerWidth = Math.min(screenWidth, 1200);
+      const targetWidth = containerWidth * pixelRatio;
+      
+      // Set max width based on aspect ratio
+      const maxWidth = currentPhoto.aspectRatio === 'portrait' ? 2400 : 3200;
+
+      // Round up to nearest 100px for better caching
+      const roundedWidth = Math.min(Math.ceil(targetWidth / 100) * 100, maxWidth);
+      
+      // Ensure minimum quality of 800px
+      setOptimalWidth(Math.max(roundedWidth, 800));
+    };
+
+    calculateOptimalWidth();
+  }, [currentPhoto]);
+
   if (loading) {
     return <div className="text-white text-center py-12">Loading...</div>;
   }
@@ -37,8 +66,6 @@ export function Home() {
   if (error) {
     return <div className="text-red-500 text-center py-12">{error}</div>;
   }
-
-  const currentPhoto = filteredPhotos[currentPhotoIndex] || photos[0];
 
   return (
     <>
@@ -66,7 +93,7 @@ export function Home() {
             >
               <img
                 key={currentPhoto.id}
-                src={getOptimizedImageUrl(currentPhoto.url, 1200)}
+                src={getOptimizedImageUrl(currentPhoto.url, optimalWidth)}
                 alt={currentPhoto.title}
                 className="w-full h-full object-cover animate-fade-in"
               />
