@@ -31,21 +31,15 @@ export interface Album {
   id: string;
   name: string;
   description: string;
-  theme: string;
+  theme: string; // Theme name as a string
   createdAt: string;
-  // Note: yearRange is calculated on the client-side in useGallery.ts
-  // For a more robust solution, this should be updated via a server-side function.
   yearRange?: {
     start: number;
     end: number;
   };
 }
 
-export interface GalleryDocument {
-  list: Photo[];
-  albums: Album[];
-}
-
+// Helper type for UI display
 export interface AlbumWithStats extends Album {
   coverPhotoUrl?: string;
   photoCount: number;

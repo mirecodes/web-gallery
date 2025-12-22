@@ -16,7 +16,7 @@ export function EditAlbumModal({ isOpen, onClose, album }: EditAlbumModalProps) 
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   
-  const { updateAlbumDetails, updateTheme, deleteAlbumItem } = useGallery();
+  const { updateAlbumDetails, deleteAlbumItem } = useGallery();
 
   useEffect(() => {
     if (album) {
@@ -34,15 +34,7 @@ export function EditAlbumModal({ isOpen, onClose, album }: EditAlbumModalProps) 
 
     try {
       setIsSaving(true);
-      
-      // If the theme name itself was changed, update it for all related albums
-      if (theme !== album.theme) {
-        await updateTheme(album.theme, theme);
-      }
-
-      // Update the specific details for this album
       await updateAlbumDetails(album.id, { name, theme, description });
-
       onClose();
     } catch (error: any) {
       console.error('Failed to update album:', error);
@@ -53,7 +45,7 @@ export function EditAlbumModal({ isOpen, onClose, album }: EditAlbumModalProps) 
   };
 
   const handleDelete = async () => {
-    if (!confirm(`Are you sure you want to delete the album "${album.name}"? All photos within this album will become uncategorized. This action cannot be undone.`)) {
+    if (!confirm(`Are you sure you want to delete the album "${album.name}"? Photos in this album will become uncategorized.`)) {
       return;
     }
 
