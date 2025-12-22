@@ -8,9 +8,10 @@ import { PhotoViewer } from './PhotoViewer';
 interface GalleryProps {
   albumId?: string;
   onBack?: () => void;
+  isEditMode?: boolean;
 }
 
-export function Gallery({ albumId, onBack }: GalleryProps) {
+export function Gallery({ albumId, onBack, isEditMode = false }: GalleryProps) {
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const { photos, albums, loading, error } = useGallery();
@@ -158,6 +159,7 @@ export function Gallery({ albumId, onBack }: GalleryProps) {
           initialIndex={filteredPhotos.findIndex(p => p.id === selectedPhoto.id)}
           onClose={() => setSelectedPhoto(null)}
           albumName={currentAlbum?.name}
+          isEditMode={isEditMode}
         />
       )}
     </>

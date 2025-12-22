@@ -58,13 +58,17 @@ export default function App() {
       />
       
       <main className="pt-14">
-        {activeTab === 'home' && <Home />}
+        {activeTab === 'home' && <Home isEditMode={isEditMode} />}
         
-        {activeTab === 'photos' && <Gallery />}
+        {activeTab === 'photos' && <Gallery isEditMode={isEditMode} />}
         
         {activeTab === 'albums' && (
           selectedAlbumId ? (
-            <AlbumViewer albumId={selectedAlbumId} onBack={handleBackToAlbums} />
+            <AlbumViewer 
+              albumId={selectedAlbumId} 
+              onBack={handleBackToAlbums} 
+              isEditMode={isEditMode}
+            />
           ) : (
             <Albums onAlbumClick={handleAlbumClick} />
           )

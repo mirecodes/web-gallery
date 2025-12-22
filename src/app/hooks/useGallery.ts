@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { getGalleryData, addPhoto, addAlbum } from '../services/firebase';
+import { getGalleryData, addPhoto, addAlbum, updatePhoto, deletePhoto } from '../services/firebase';
 import { uploadToCloudinary } from '../services/cloudinary';
 import { Photo, Album, AlbumWithStats } from '../types';
 import exifr from 'exifr';
@@ -25,7 +25,7 @@ export const useGallery = () => {
       });
 
       setPhotos(validatedPhotos.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-      setAlbums(albumList); // Keep original sort order for now
+      setAlbums(albumList);
     } catch (err) {
       setError('Failed to fetch gallery data.');
       console.error(err);
@@ -59,23 +59,43 @@ export const useGallery = () => {
       };
     });
 
-    // Sort albums based on the new criteria
     return albumsWithComputedStats.sort((a, b) => {
       const endYearA = a.yearRange?.end || 0;
       const endYearB = b.yearRange?.end || 0;
-
-      if (endYearA !== endYearB) {
-        return endYearB - endYearA; // Sort by end year descending
-      }
-      
-      return a.name.localeCompare(b.name); // Then by name ascending
+      if (endYearA !== endYearB) return endYearB - endYearA;
+      return a.name.localeCompare(b.name);
     });
-
   }, [albums, photos]);
+
+  const updatePhotoDetails = async (photoId: string, details: Partial<Pick<Photo, 'title' | 'albumId'>>) => {
+    try {
+      await updatePhoto(photoId, details);
+      setPhotos(prevPhotos => 
+        prevPhotos.map(p => p.id === photoId ? { ...p, ...details } : p)
+      );
+    } catch (err) {
+      setError('Failed to update photo details.');
+      console.error(err);
+      throw err;
+    }
+  };
+
+  const deletePhotoItem = async (photoId: string) => {
+    try {
+      const { deletedAlbumId } = await deletePhoto(photoId);
+      setPhotos(prevPhotos => prevPhotos.filter(p => p.id !== photoId));
+      if (deletedAlbumId) {
+        setAlbums(prevAlbums => prevAlbums.filter(a => a.id !== deletedAlbumId));
+      }
+    } catch (err) {
+      setError('Failed to delete photo.');
+      console.error(err);
+      throw err;
+    }
+  };
 
   const processAndUploadSinglePhoto = async (file: File, title: string, albumId: string, preExtractedMetadata?: any) => {
     let exifData = preExtractedMetadata || {};
-    
     if (!preExtractedMetadata) {
       try {
         const output = await exifr.parse(file, { tiff: true, exif: true, gps: true });
@@ -136,20 +156,17 @@ export const useGallery = () => {
       const total = files.length;
       const newPhotos: Photo[] = [];
       const chunkSize = 3;
-
       for (let i = 0; i < files.length; i += chunkSize) {
         const chunk = files.slice(i, i + chunkSize);
         const promises = chunk.map(async (file) => {
           const title = file.name.replace(/\.[^/.]+$/, "");
           return await processAndUploadSinglePhoto(file, title, albumId);
         });
-
         const results = await Promise.all(promises);
         newPhotos.push(...results);
         completedCount += results.length;
         onProgress?.(completedCount, total);
       }
-
       setPhotos(prevPhotos => [...newPhotos, ...prevPhotos]);
     } catch (err) {
       setError('Failed to batch upload photos.');
@@ -185,6 +202,8 @@ export const useGallery = () => {
     refetch: fetchData, 
     uploadAndAddPhoto,
     batchUploadPhotos,
-    createAlbum 
+    createAlbum,
+    updatePhotoDetails,
+    deletePhotoItem
   };
 };

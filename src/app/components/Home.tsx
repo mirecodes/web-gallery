@@ -5,7 +5,11 @@ import { getOptimizedImageUrl } from '../services/cloudinary';
 import { Photo } from '../types';
 import { PhotoViewer } from './PhotoViewer';
 
-export function Home() {
+interface HomeProps {
+  isEditMode: boolean;
+}
+
+export function Home({ isEditMode }: HomeProps) {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [optimalWidth, setOptimalWidth] = useState(1200);
@@ -134,6 +138,7 @@ export function Home() {
           photos={sortedPhotos}
           initialIndex={sortedPhotos.findIndex(p => p.id === selectedPhoto.id)}
           onClose={() => setSelectedPhoto(null)}
+          isEditMode={isEditMode}
         />
       )}
     </>

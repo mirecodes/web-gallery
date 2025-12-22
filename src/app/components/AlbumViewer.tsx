@@ -5,9 +5,10 @@ import { PhotoViewer } from './PhotoViewer';
 interface AlbumViewerProps {
   albumId: string;
   onBack: () => void;
+  isEditMode?: boolean;
 }
 
-export function AlbumViewer({ albumId, onBack }: AlbumViewerProps) {
+export function AlbumViewer({ albumId, onBack, isEditMode = false }: AlbumViewerProps) {
   const { photos, albums } = useGallery();
   
   const albumPhotos = photos.filter(p => p.albumId === albumId);
@@ -31,6 +32,7 @@ export function AlbumViewer({ albumId, onBack }: AlbumViewerProps) {
       onClose={onBack}
       albumName={currentAlbum.name}
       showThumbnails={true}
+      isEditMode={isEditMode}
     />
   );
 }
