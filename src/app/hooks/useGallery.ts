@@ -41,65 +41,101 @@ export const useGallery = () => {
     });
   }, [albums, photos]);
 
+  const processAndUploadSinglePhoto = async (file: File, title: string, albumId: string, preExtractedMetadata?: any) => {
+    // 1. Use pre-extracted metadata or extract it now
+    let exifData = preExtractedMetadata || {};
+    
+    if (!preExtractedMetadata) {
+      try {
+        const output = await exifr.parse(file, {
+          tiff: true,
+          exif: true,
+          gps: true,
+        });
+        
+        if (output) {
+          exifData = {
+            takenAt: output.DateTimeOriginal ? output.DateTimeOriginal.toISOString() : undefined,
+            cameraMake: output.Make,
+            cameraModel: output.Model,
+            fNumber: output.FNumber,
+            exposureTime: output.ExposureTime,
+            iso: output.ISO,
+            gps: output.latitude && output.longitude ? {
+              latitude: output.latitude,
+              longitude: output.longitude
+            } : undefined
+          };
+        }
+      } catch (e) {
+        console.warn(`Failed to extract EXIF data for ${file.name}:`, e);
+      }
+    }
+
+    // 2. Upload to Cloudinary
+    const imageUrl = await uploadToCloudinary(file);
+    
+    // 3. Get Image Dimensions
+    const image = new Image();
+    image.src = imageUrl;
+    await image.decode();
+
+    // 4. Create Photo Object
+    const newPhoto: Photo = {
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // Unique ID
+      url: imageUrl,
+      date: new Date().toISOString().split('T')[0].replace(/-/g, '.'), // Upload date
+      title,
+      albumId,
+      width: image.width,
+      height: image.height,
+      aspectRatio: image.width > image.height ? 'landscape' : 'portrait',
+      ...exifData
+    };
+
+    // 5. Save to Firestore
+    await addPhoto(newPhoto);
+    return newPhoto;
+  };
+
   const uploadAndAddPhoto = async (file: File, title: string, albumId: string, preExtractedMetadata?: any) => {
     try {
-      // 1. Use pre-extracted metadata or extract it now
-      let exifData = preExtractedMetadata || {};
-      
-      if (!preExtractedMetadata) {
-        try {
-          const output = await exifr.parse(file, {
-            tiff: true,
-            exif: true,
-            gps: true,
-          });
-          
-          if (output) {
-            exifData = {
-              takenAt: output.DateTimeOriginal ? output.DateTimeOriginal.toISOString() : undefined,
-              cameraMake: output.Make,
-              cameraModel: output.Model,
-              fNumber: output.FNumber,
-              exposureTime: output.ExposureTime,
-              iso: output.ISO,
-              gps: output.latitude && output.longitude ? {
-                latitude: output.latitude,
-                longitude: output.longitude
-              } : undefined
-            };
-          }
-        } catch (e) {
-          console.warn('Failed to extract EXIF data:', e);
-        }
-      }
-
-      // 2. Upload to Cloudinary
-      const imageUrl = await uploadToCloudinary(file);
-      
-      // 3. Get Image Dimensions
-      const image = new Image();
-      image.src = imageUrl;
-      await image.decode();
-
-      // 4. Create Photo Object
-      const newPhoto: Photo = {
-        id: new Date().toISOString(),
-        url: imageUrl,
-        date: new Date().toISOString().split('T')[0].replace(/-/g, '.'), // Upload date
-        title,
-        // location field is removed from manual input, relying on GPS or future reverse geocoding
-        albumId,
-        width: image.width,
-        height: image.height,
-        aspectRatio: image.width > image.height ? 'landscape' : 'portrait',
-        ...exifData // Spread extracted metadata
-      };
-
-      // 5. Save to Firestore
-      await addPhoto(newPhoto);
+      const newPhoto = await processAndUploadSinglePhoto(file, title, albumId, preExtractedMetadata);
       setPhotos(prevPhotos => [newPhoto, ...prevPhotos]);
     } catch (err) {
       setError('Failed to upload and add photo.');
+      console.error(err);
+      throw err;
+    }
+  };
+
+  const batchUploadPhotos = async (files: File[], albumId: string, onProgress?: (completed: number, total: number) => void) => {
+    try {
+      let completedCount = 0;
+      const total = files.length;
+      const newPhotos: Photo[] = [];
+
+      // Process files sequentially to avoid overwhelming the server/browser
+      // or use Promise.all for parallel if preferred. Here we use a mix: chunks of 3
+      const chunkSize = 3;
+      for (let i = 0; i < files.length; i += chunkSize) {
+        const chunk = files.slice(i, i + chunkSize);
+        const promises = chunk.map(async (file) => {
+          // Remove extension from filename for title
+          const title = file.name.replace(/\.[^/.]+$/, "");
+          const photo = await processAndUploadSinglePhoto(file, title, albumId);
+          return photo;
+        });
+
+        const results = await Promise.all(promises);
+        newPhotos.push(...results);
+        completedCount += results.length;
+        if (onProgress) onProgress(completedCount, total);
+      }
+
+      setPhotos(prevPhotos => [...newPhotos, ...prevPhotos]);
+    } catch (err) {
+      setError('Failed to batch upload photos.');
       console.error(err);
       throw err;
     }
@@ -132,6 +168,7 @@ export const useGallery = () => {
     error, 
     refetch: fetchData, 
     uploadAndAddPhoto,
+    batchUploadPhotos,
     createAlbum 
   };
 };

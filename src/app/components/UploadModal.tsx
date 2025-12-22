@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useGallery } from '../hooks/useGallery';
-import { X, Upload, Loader2, Plus, Calendar, Camera, MapPin } from 'lucide-react';
+import { X, Upload, Loader2, Plus, Calendar, Camera, MapPin, FileImage } from 'lucide-react';
 import exifr from 'exifr';
+import { Progress } from './ui/progress'; // Import the Progress component
 
 interface UploadModalProps {
   isOpen: boolean;
@@ -18,7 +19,7 @@ interface ExtractedMetadata {
 }
 
 export function UploadModal({ isOpen, onClose }: UploadModalProps) {
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [title, setTitle] = useState('');
   const [selectedAlbumId, setSelectedAlbumId] = useState('');
   const [metadata, setMetadata] = useState<ExtractedMetadata | null>(null);
@@ -29,17 +30,20 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
   const [newAlbumTheme, setNewAlbumTheme] = useState('');
 
   const [isUploading, setIsUploading] = useState(false);
-  const { uploadAndAddPhoto, createAlbum, albums } = useGallery();
+  const [uploadProgress, setUploadProgress] = useState({ completed: 0, total: 0 });
+  
+  const { uploadAndAddPhoto, batchUploadPhotos, createAlbum, albums } = useGallery();
 
+  // Handle single file metadata preview
   useEffect(() => {
-    if (!file) {
+    if (files.length !== 1) {
       setMetadata(null);
       return;
     }
 
     const extractMeta = async () => {
       try {
-        const output = await exifr.parse(file, {
+        const output = await exifr.parse(files[0], {
           tiff: true,
           exif: true,
           gps: true,
@@ -62,12 +66,12 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
     };
 
     extractMeta();
-  }, [file]);
+  }, [files]);
 
   if (!isOpen) return null;
 
   const resetForm = () => {
-    setFile(null);
+    setFiles([]);
     setTitle('');
     setSelectedAlbumId('');
     setIsCreatingAlbum(false);
@@ -75,11 +79,19 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
     setNewAlbumDesc('');
     setNewAlbumTheme('');
     setMetadata(null);
+    setUploadProgress({ completed: 0, total: 0 });
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setFiles(Array.from(e.target.files));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!file || !title) return;
+    if (files.length === 0) return;
+    if (files.length === 1 && !title) return;
 
     try {
       setIsUploading(true);
@@ -101,18 +113,31 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
         return;
       }
 
-      await uploadAndAddPhoto(file, title, targetAlbumId, metadata || undefined);
+      if (files.length === 1) {
+        // Single file upload
+        setUploadProgress({ completed: 0, total: 1 });
+        await uploadAndAddPhoto(files[0], title, targetAlbumId, metadata || undefined);
+        setUploadProgress({ completed: 1, total: 1 });
+      } else {
+        // Batch upload
+        setUploadProgress({ completed: 0, total: files.length });
+        await batchUploadPhotos(files, targetAlbumId, (completed, total) => {
+          setUploadProgress({ completed, total });
+        });
+      }
       
       onClose();
       resetForm();
     } catch (error: any) {
       console.error('Upload failed:', error);
-      // Show detailed error message to user
       alert(`Upload failed: ${error.message || 'Unknown error'}`);
     } finally {
       setIsUploading(false);
     }
   };
+
+  const isSingleFile = files.length === 1;
+  const progressValue = uploadProgress.total > 0 ? (uploadProgress.completed / uploadProgress.total) * 100 : 0;
 
   return (
     <div className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4">
@@ -124,7 +149,9 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
           <X className="w-6 h-6" />
         </button>
 
-        <h2 className="text-xl text-white font-semibold mb-6">Upload Photo</h2>
+        <h2 className="text-xl text-white font-semibold mb-6">
+          {isSingleFile ? 'Upload Photo' : files.length > 1 ? `Upload ${files.length} Photos` : 'Upload Photos'}
+        </h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* File Input */}
@@ -132,24 +159,44 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
             <input
               type="file"
               accept="image/*"
-              onChange={(e) => setFile(e.target.files?.[0] || null)}
+              multiple
+              onChange={handleFileChange}
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
             />
-            {file ? (
+            {files.length > 0 ? (
               <div className="text-white">
-                <p className="font-medium truncate">{file.name}</p>
-                <p className="text-sm text-white/60 mt-1">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                {isSingleFile ? (
+                  <>
+                    <p className="font-medium truncate">{files[0].name}</p>
+                    <p className="text-sm text-white/60 mt-1">{(files[0].size / 1024 / 1024).toFixed(2)} MB</p>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex justify-center mb-2">
+                      <div className="relative">
+                        <FileImage className="w-8 h-8 text-white/80" />
+                        <div className="absolute -top-2 -right-2 bg-blue-500 text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                          {files.length}
+                        </div>
+                      </div>
+                    </div>
+                    <p className="font-medium">{files.length} photos selected</p>
+                    <p className="text-sm text-white/60 mt-1">
+                      {(files.reduce((acc, f) => acc + f.size, 0) / 1024 / 1024).toFixed(2)} MB Total
+                    </p>
+                  </>
+                )}
               </div>
             ) : (
               <div className="text-white/60">
                 <Upload className="w-8 h-8 mx-auto mb-2" />
-                <p>Click or drag to upload image</p>
+                <p>Click or drag to upload images</p>
               </div>
             )}
           </div>
 
-          {/* Metadata Display */}
-          {metadata && (
+          {/* Metadata Display (Single file only) */}
+          {isSingleFile && metadata && (
             <div className="bg-white/5 p-3 rounded border border-white/10 text-sm space-y-2">
               <h4 className="text-xs text-white/40 font-bold uppercase">Photo Info</h4>
               {metadata.takenAt && (
@@ -175,18 +222,20 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
             </div>
           )}
 
-          {/* Title Input */}
-          <div>
-            <label className="block text-sm text-white/60 mb-1">Title</label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full bg-black/50 border border-white/10 rounded px-3 py-2 text-white focus:outline-none focus:border-white/40"
-              placeholder="Enter photo title"
-              required
-            />
-          </div>
+          {/* Title Input (Single file only) */}
+          {isSingleFile && (
+            <div>
+              <label className="block text-sm text-white/60 mb-1">Title</label>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="w-full bg-black/50 border border-white/10 rounded px-3 py-2 text-white focus:outline-none focus:border-white/40"
+                placeholder="Enter photo title"
+                required
+              />
+            </div>
+          )}
 
           {/* Album Selection */}
           <div>
@@ -250,18 +299,30 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
             )}
           </div>
 
+          {/* Progress Bar - Always show when uploading */}
+          {isUploading && (
+            <div className="space-y-1 pt-2">
+              <Progress value={progressValue} className="w-full h-2 bg-white/10 [&>div]:bg-white" />
+              <p className="text-xs text-white/60 text-right">
+                {uploadProgress.completed} / {uploadProgress.total}
+              </p>
+            </div>
+          )}
+
           <button
             type="submit"
-            disabled={!file || !title || isUploading || (!selectedAlbumId && !isCreatingAlbum)}
+            disabled={files.length === 0 || (isSingleFile && !title) || isUploading || (!selectedAlbumId && !isCreatingAlbum)}
             className="w-full bg-white text-black font-medium py-2 rounded hover:bg-white/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-6"
           >
             {isUploading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Uploading...
+                {files.length > 1 
+                  ? `Uploading...`
+                  : 'Uploading...'}
               </>
             ) : (
-              'Upload Photo'
+              files.length > 1 ? 'Upload All Photos' : 'Upload Photo'
             )}
           </button>
         </form>
