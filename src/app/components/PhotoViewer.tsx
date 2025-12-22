@@ -18,20 +18,18 @@ export function PhotoViewer({ photos, initialIndex, onClose, albumName, showThum
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [showInfo, setShowInfo] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [optimalWidth, setOptimalWidth] = useState(1600);
+  const [optimalWidth, setOptimalWidth] = useState(1200);
   const thumbnailScrollRef = useRef<HTMLDivElement>(null);
   
   const { albums, updatePhotoDetails, deletePhotoItem } = useGallery();
 
   const currentPhoto = photos[currentIndex];
 
-  // Editable state
   const [editedTitle, setEditedTitle] = useState(currentPhoto?.title || '');
   const [editedAlbumId, setEditedAlbumId] = useState(currentPhoto?.albumId || '');
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Reset edited state when photo changes
   useEffect(() => {
     if (currentPhoto) {
       setEditedTitle(currentPhoto.title);
@@ -52,7 +50,7 @@ export function PhotoViewer({ photos, initialIndex, onClose, albumName, showThum
         title: editedTitle,
         albumId: editedAlbumId,
       });
-      setShowInfo(false); // Close info panel after save
+      setShowInfo(false);
     } catch (error) {
       console.error("Failed to save photo details:", error);
       alert("Failed to save changes.");
@@ -66,11 +64,10 @@ export function PhotoViewer({ photos, initialIndex, onClose, albumName, showThum
     if (!confirm(`Are you sure you want to delete "${currentPhoto.title}"? This action cannot be undone.`)) {
       return;
     }
-
     setIsDeleting(true);
     try {
       await deletePhotoItem(currentPhoto.id);
-      onClose(); // Close the viewer after deletion
+      onClose();
     } catch (error) {
       console.error("Failed to delete photo:", error);
       alert("Failed to delete photo.");
@@ -113,18 +110,40 @@ export function PhotoViewer({ photos, initialIndex, onClose, albumName, showThum
 
   useEffect(() => {
     if (!currentPhoto) return;
+
     const calculateOptimalWidth = () => {
       const screenWidth = window.innerWidth;
+      
+      // Limit pixel ratio to 2x to prevent excessive image sizes on high-density displays.
       const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
       const targetWidth = screenWidth * pixelRatio;
-      const breakpoints = [640, 1080, 1600, 1920, 2400]; 
-      let optimal = breakpoints.find(bp => bp >= targetWidth) || 2400;
-      const maxWidth = currentPhoto.aspectRatio === 'portrait' ? 1800 : 2400;
+      
+      // Snap to the next largest breakpoint for better cache efficiency.
+      const breakpoints = [400, 800, 1200, 2000, 2800];
+      
+      // Find the first breakpoint that is larger than or equal to the target width.
+      let optimal = breakpoints.find(bp => bp >= targetWidth) || 2800;
+
+      // Apply an absolute max width based on aspect ratio.
+      const maxWidth = currentPhoto.aspectRatio === 'portrait' ? 2000 : 2800;
+      
       setOptimalWidth(Math.min(optimal, maxWidth));
     };
+
     calculateOptimalWidth();
-    window.addEventListener('resize', calculateOptimalWidth);
-    return () => window.removeEventListener('resize', calculateOptimalWidth);
+    
+    // Debounced resize handler.
+    let resizeTimer: number;
+    const handleResize = () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(calculateOptimalWidth, 150);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      clearTimeout(resizeTimer);
+    };
   }, [currentPhoto]);
 
   if (!currentPhoto) return null;

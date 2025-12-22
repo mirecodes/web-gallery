@@ -5,7 +5,7 @@ import {
   updatePhoto, 
   deletePhoto, 
   addAlbum,
-  updateAlbum,
+  updateAlbum as fbUpdateAlbum,
   deleteAlbum,
   logDeletedPhoto,
   updatePhotosAlbumId
@@ -15,7 +15,6 @@ import { Photo, Album, AlbumWithStats } from '../types';
 import exifr from 'exifr';
 import { getCityFromCoordinates } from '../services/geocoding';
 
-// Add _chunkId to Photo type for internal state management
 type PhotoWithChunk = Photo & { _chunkId: string };
 
 export const useGallery = () => {
@@ -90,21 +89,26 @@ export const useGallery = () => {
     } catch (err) { console.error(err); throw err; }
   };
 
-  const updateAlbumDetails = async (albumId: string, details: Partial<Album>) => {
+  const updateAlbum = async (albumId: string, details: { name: string, description: string, theme: string }, oldTheme: string) => {
     try {
-      await updateAlbum(albumId, details);
-      setAlbums(prev => prev.map(a => a.id === albumId ? { ...a, ...details } : a));
-    } catch (err) { console.error(err); throw err; }
-  };
-  
-  const updateTheme = async (oldTheme: string, newTheme: string) => {
-    const updatedAlbums = albums.map(a => a.theme === oldTheme ? { ...a, theme: newTheme } : a);
-    const updatePromises = updatedAlbums
-      .filter(a => a.theme === newTheme)
-      .map(a => updateAlbum(a.id, { theme: newTheme }));
-    
-    await Promise.all(updatePromises);
-    setAlbums(updatedAlbums);
+      // If theme name has changed, update all albums that used the old theme.
+      if (details.theme !== oldTheme) {
+        const themeUpdatePromises = albums
+          .filter(a => a.theme === oldTheme)
+          .map(a => fbUpdateAlbum(a.id, { theme: details.theme }));
+        await Promise.all(themeUpdatePromises);
+      }
+      
+      // Update the primary album's details.
+      await fbUpdateAlbum(albumId, details);
+
+      // Refetch data to ensure UI consistency.
+      // A more optimized approach would be to update local state, but refetching is safer.
+      await fetchData();
+    } catch (err) {
+      console.error("Failed to update album:", err);
+      throw err;
+    }
   };
 
   const deleteAlbumItem = async (albumId: string) => {
@@ -129,7 +133,6 @@ export const useGallery = () => {
         await deleteAlbum(sourceAlbumId);
       }
       
-      // Refetch to ensure data consistency
       fetchData();
 
     } catch (err) { console.error(err); throw err; }
@@ -210,6 +213,6 @@ export const useGallery = () => {
   return { 
     photos, albums: albumsWithStats, loading, error, refetch: fetchData, 
     uploadAndAddPhoto, batchUploadPhotos, createAlbum, updatePhotoDetails, deletePhotoItem,
-    updateAlbumDetails, updateTheme, deleteAlbumItem, transferAlbumPhotos
+    updateAlbum, deleteAlbumItem, transferAlbumPhotos
   };
 };

@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useGallery } from '../hooks/useGallery';
-import { X, Upload, Loader2, Plus, Calendar, Camera, MapPin, FileImage } from 'lucide-react';
+import { X, Upload, Loader2, Plus, Calendar, Camera, MapPin, FileImage, Search, Check, Aperture, Clock } from 'lucide-react';
 import exifr from 'exifr';
 import { Progress } from './ui/progress';
 import { getCityFromCoordinates } from '../services/geocoding';
@@ -11,9 +11,14 @@ interface UploadModalProps {
   onClose: () => void;
 }
 
+// Expanded metadata interface to include more EXIF details
 interface ExtractedMetadata {
   takenAt?: string;
+  cameraMake?: string;
   cameraModel?: string;
+  fNumber?: number;
+  exposureTime?: number;
+  iso?: number;
   gps?: {
     latitude: number;
     longitude: number;
@@ -37,7 +42,7 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
   
   const [isAlbumSelectorOpen, setIsAlbumSelectorOpen] = useState(false);
 
-  const { uploadAndAddPhoto, batchUploadPhotos, createAlbum, albums } = useGallery();
+  const { uploadAndAddPhoto, batchUploadPhotos, createAlbum, deleteAlbumItem, albums } = useGallery();
 
   // Handle single file metadata preview
   useEffect(() => {
@@ -59,7 +64,11 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
         if (output) {
           meta = {
             takenAt: output.DateTimeOriginal ? output.DateTimeOriginal.toISOString() : undefined,
+            cameraMake: output.Make,
             cameraModel: output.Model,
+            fNumber: output.FNumber,
+            exposureTime: output.ExposureTime,
+            iso: output.ISO,
             gps: output.latitude && output.longitude ? {
               latitude: output.latitude,
               longitude: output.longitude
@@ -111,18 +120,20 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
     if (files.length === 0) return;
     if (files.length === 1 && !title) return;
 
-    try {
-      setIsUploading(true);
-      
-      let targetAlbumId = selectedAlbumId;
+    setIsUploading(true);
+    let targetAlbumId = selectedAlbumId;
+    let newAlbumCreatedId: string | null = null;
 
+    try {
       if (isCreatingAlbum) {
         if (!newAlbumName || !newAlbumTheme) {
           alert('Please fill in album details');
           setIsUploading(false);
           return;
         }
-        targetAlbumId = await createAlbum(newAlbumName, newAlbumDesc, newAlbumTheme);
+        const newId = await createAlbum(newAlbumName, newAlbumDesc, newAlbumTheme);
+        targetAlbumId = newId;
+        newAlbumCreatedId = newId;
       }
 
       if (!targetAlbumId) {
@@ -131,15 +142,20 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
         return;
       }
 
-      if (files.length === 1) {
-        setUploadProgress({ completed: 0, total: 1 });
-        await uploadAndAddPhoto(files[0], title, targetAlbumId, metadata || undefined);
-        setUploadProgress({ completed: 1, total: 1 });
-      } else {
-        setUploadProgress({ completed: 0, total: files.length });
-        await batchUploadPhotos(files, targetAlbumId, (completed, total) => {
-          setUploadProgress({ completed, total });
-        });
+      try {
+        if (files.length === 1) {
+          await uploadAndAddPhoto(files[0], title, targetAlbumId, metadata || undefined);
+        } else {
+          await batchUploadPhotos(files, targetAlbumId, (completed, total) => {
+            setUploadProgress({ completed, total });
+          });
+        }
+      } catch (uploadError) {
+        if (newAlbumCreatedId) {
+          console.warn(`Photo upload failed. Rolling back album creation for albumId: ${newAlbumCreatedId}`);
+          await deleteAlbumItem(newAlbumCreatedId);
+        }
+        throw uploadError; // Re-throw to be caught by the outer catch block
       }
       
       onClose();
@@ -224,7 +240,7 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
               {metadata.cameraModel && (
                 <div className="flex items-center gap-2 text-white/70">
                   <Camera className="w-4 h-4" />
-                  <span>{metadata.cameraModel}</span>
+                  <span>{metadata.cameraMake} {metadata.cameraModel}</span>
                 </div>
               )}
               {metadata.gps && (
@@ -235,6 +251,26 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
                   </span>
                 </div>
               )}
+              <div className="grid grid-cols-3 gap-2 text-white/70">
+                {metadata.fNumber && (
+                  <div className="flex items-center gap-2">
+                    <Aperture className="w-4 h-4" />
+                    <span>f/{metadata.fNumber.toFixed(1)}</span>
+                  </div>
+                )}
+                {metadata.exposureTime && (
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4" />
+                    <span>1/{Math.round(1/metadata.exposureTime)}s</span>
+                  </div>
+                )}
+                {metadata.iso && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold border border-white/40 px-1 rounded">ISO</span>
+                    <span>{metadata.iso}</span>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

@@ -34,25 +34,37 @@ export function Home({ isEditMode }: HomeProps) {
 
   const currentPhoto = carouselPhotos[currentPhotoIndex] || photos[0];
 
-  // Calculate optimal image width based on screen size and pixel density
   useEffect(() => {
     if (!currentPhoto) return;
 
     const calculateOptimalWidth = () => {
       const screenWidth = window.innerWidth;
-      const pixelRatio = window.devicePixelRatio || 1;
+      const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
       
-      const containerWidth = Math.min(screenWidth, 1200);
-      const targetWidth = containerWidth * pixelRatio;
+      // Use the full screen width to match PhotoViewer's logic for better caching.
+      const targetWidth = screenWidth * pixelRatio;
       
-      // Apply same max width constraints as PhotoViewer
-      const maxWidth = currentPhoto.aspectRatio === 'portrait' ? 1800 : 2400;
-      const roundedWidth = Math.min(Math.ceil(targetWidth / 100) * 100, maxWidth);
+      const breakpoints = [400, 800, 1200, 2000, 2800];
+      let optimal = breakpoints.find(bp => bp >= targetWidth) || 2800;
+
+      const maxWidth = currentPhoto.aspectRatio === 'portrait' ? 2000 : 2800;
       
-      setOptimalWidth(Math.max(roundedWidth, 800));
+      setOptimalWidth(Math.min(optimal, maxWidth));
     };
 
     calculateOptimalWidth();
+
+    let resizeTimer: number;
+    const handleResize = () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(calculateOptimalWidth, 150);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      clearTimeout(resizeTimer);
+    };
   }, [currentPhoto]);
 
   if (loading) {
