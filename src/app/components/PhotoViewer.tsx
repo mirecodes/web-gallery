@@ -128,10 +128,10 @@ export function PhotoViewer({ photos, initialIndex, onClose, albumName, showThum
                   <Calendar className="w-4 h-4 flex-shrink-0" />
                   <span>{currentPhoto.takenAt ? new Date(currentPhoto.takenAt).toLocaleDateString() : currentPhoto.date}</span>
                 </div>
-                {currentPhoto.location && (
+                {(currentPhoto.location || currentPhoto.locationName) && (
                   <div className="flex items-center gap-2 text-white/60 text-sm">
                     <MapPin className="w-4 h-4 flex-shrink-0" />
-                    <span>{currentPhoto.location}</span>
+                    <span>{currentPhoto.location || currentPhoto.locationName}</span>
                   </div>
                 )}
               </div>

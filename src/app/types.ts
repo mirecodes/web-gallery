@@ -19,6 +19,7 @@ export interface Photo {
     latitude: number;
     longitude: number;
   };
+  locationName?: string; // City name from reverse geocoding
 
   // Original dimensions
   width?: number;

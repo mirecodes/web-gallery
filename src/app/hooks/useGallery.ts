@@ -3,6 +3,7 @@ import { getGalleryData, addPhoto, addAlbum } from '../services/firebase';
 import { uploadToCloudinary } from '../services/cloudinary';
 import { Photo, Album, AlbumWithStats } from '../types';
 import exifr from 'exifr';
+import { getCityFromCoordinates } from '../services/geocoding';
 
 export const useGallery = () => {
   const [photos, setPhotos] = useState<Photo[]>([]);
@@ -72,6 +73,14 @@ export const useGallery = () => {
       }
     }
 
+    // Fetch location name if GPS exists but locationName is missing (e.g. batch upload)
+    if (exifData.gps && !exifData.locationName) {
+      const city = await getCityFromCoordinates(exifData.gps.latitude, exifData.gps.longitude);
+      if (city) {
+        exifData.locationName = city;
+      }
+    }
+
     // 2. Upload to Cloudinary
     const imageUrl = await uploadToCloudinary(file);
     
@@ -134,7 +143,8 @@ export const useGallery = () => {
       }
 
       setPhotos(prevPhotos => [...newPhotos, ...prevPhotos]);
-    } catch (err) {
+    } catch (err)
+ {
       setError('Failed to batch upload photos.');
       console.error(err);
       throw err;

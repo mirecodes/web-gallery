@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useGallery } from '../hooks/useGallery';
 import { X, Upload, Loader2, Plus, Calendar, Camera, MapPin, FileImage } from 'lucide-react';
 import exifr from 'exifr';
-import { Progress } from './ui/progress'; // Import the Progress component
+import { Progress } from './ui/progress';
+import { getCityFromCoordinates } from '../services/geocoding';
 
 interface UploadModalProps {
   isOpen: boolean;
@@ -16,6 +17,7 @@ interface ExtractedMetadata {
     latitude: number;
     longitude: number;
   };
+  locationName?: string;
 }
 
 export function UploadModal({ isOpen, onClose }: UploadModalProps) {
@@ -49,15 +51,27 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
           gps: true,
         });
         
+        let meta: ExtractedMetadata = {};
+
         if (output) {
-          setMetadata({
+          meta = {
             takenAt: output.DateTimeOriginal ? output.DateTimeOriginal.toISOString() : undefined,
             cameraModel: output.Model,
             gps: output.latitude && output.longitude ? {
               latitude: output.latitude,
               longitude: output.longitude
             } : undefined
-          });
+          };
+
+          if (meta.gps) {
+            setMetadata(meta); // Show GPS coords immediately
+            const locationName = await getCityFromCoordinates(meta.gps.latitude, meta.gps.longitude);
+            if (locationName) {
+              setMetadata(prev => prev ? { ...prev, locationName } : { locationName });
+            }
+          } else {
+            setMetadata(meta);
+          }
         }
       } catch (e) {
         console.warn('Failed to extract EXIF data for preview:', e);
@@ -215,7 +229,7 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
                 <div className="flex items-center gap-2 text-white/70">
                   <MapPin className="w-4 h-4" />
                   <span>
-                    Location found ({metadata.gps.latitude.toFixed(4)}, {metadata.gps.longitude.toFixed(4)})
+                    {metadata.locationName ? metadata.locationName : `GPS: ${metadata.gps.latitude.toFixed(4)}, ${metadata.gps.longitude.toFixed(4)}`}
                   </span>
                 </div>
               )}
