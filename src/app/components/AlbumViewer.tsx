@@ -55,10 +55,10 @@ export function AlbumViewer({ albumId, onBack }: AlbumViewerProps) {
   return (
     <div className="fixed inset-0 z-50 bg-black flex flex-col">
       {/* Top Bar */}
-      <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-20 bg-gradient-to-b from-black/60 to-transparent">
+      <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-20 bg-gradient-to-b from-black/60 to-transparent pointer-events-none">
         <button 
           onClick={onBack}
-          className="text-white/80 hover:text-white flex items-center gap-2 bg-black/20 backdrop-blur-sm px-3 py-1.5 rounded-full transition-colors"
+          className="pointer-events-auto text-white/80 hover:text-white flex items-center gap-2 bg-black/20 backdrop-blur-sm px-3 py-1.5 rounded-full transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           <span className="text-sm font-medium">{currentAlbum.name}</span>
@@ -66,7 +66,7 @@ export function AlbumViewer({ albumId, onBack }: AlbumViewerProps) {
 
         <button
           onClick={() => setShowInfo(!showInfo)}
-          className={`p-2 rounded-full transition-colors ${
+          className={`pointer-events-auto p-2 rounded-full transition-colors ${
             showInfo ? 'bg-white text-black' : 'bg-black/20 text-white hover:bg-white/20'
           }`}
         >
@@ -74,36 +74,43 @@ export function AlbumViewer({ albumId, onBack }: AlbumViewerProps) {
         </button>
       </div>
 
-      {/* Main Image Area */}
-      <div className="flex-1 relative flex items-center justify-center overflow-hidden">
-        {/* Navigation Buttons */}
-        <button 
-          onClick={handlePrev}
-          className="absolute left-4 z-10 p-2 text-white/50 hover:text-white hover:bg-white/10 rounded-full transition-all"
-        >
-          <ChevronLeft className="w-8 h-8" />
-        </button>
-        
-        <button 
-          onClick={handleNext}
-          className="absolute right-4 z-10 p-2 text-white/50 hover:text-white hover:bg-white/10 rounded-full transition-all"
-        >
-          <ChevronRight className="w-8 h-8" />
-        </button>
+      {/* Main Content Area (Split View) */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Image Area */}
+        <div className={`relative flex-1 flex items-center justify-center transition-all duration-300 ease-in-out ${showInfo ? 'mr-0' : ''}`}>
+          {/* Navigation Buttons */}
+          <button 
+            onClick={handlePrev}
+            className="absolute left-4 z-10 p-2 text-white/50 hover:text-white hover:bg-white/10 rounded-full transition-all"
+          >
+            <ChevronLeft className="w-8 h-8" />
+          </button>
+          
+          <button 
+            onClick={handleNext}
+            className="absolute right-4 z-10 p-2 text-white/50 hover:text-white hover:bg-white/10 rounded-full transition-all"
+          >
+            <ChevronRight className="w-8 h-8" />
+          </button>
 
-        {/* Image */}
-        <div className="w-full h-full flex items-center justify-center p-4 md:p-12 transition-opacity duration-300">
-          <img
-            key={currentPhoto.id}
-            src={getOptimizedImageUrl(currentPhoto.url, 1600)}
-            alt={currentPhoto.title}
-            className="max-w-full max-h-full object-contain shadow-2xl"
-          />
+          {/* Image */}
+          <div className="w-full h-full flex items-center justify-center p-4 md:p-12">
+            <img
+              key={currentPhoto.id}
+              src={getOptimizedImageUrl(currentPhoto.url, 1600)}
+              alt={currentPhoto.title}
+              className="max-w-full max-h-full object-contain shadow-2xl"
+            />
+          </div>
         </div>
 
-        {/* Info Overlay Panel */}
-        {showInfo && (
-          <div className="absolute top-16 right-4 bottom-24 w-80 bg-black/90 backdrop-blur-md border border-white/10 rounded-lg p-6 overflow-y-auto z-30 animate-in slide-in-from-right-4 fade-in duration-200">
+        {/* Info Side Panel */}
+        <div 
+          className={`bg-zinc-900 border-l border-white/10 overflow-y-auto transition-all duration-300 ease-in-out ${
+            showInfo ? 'w-80 translate-x-0' : 'w-0 translate-x-full border-none'
+          }`}
+        >
+          <div className="p-6 w-80"> {/* Fixed width container to prevent content squishing */}
             <div className="flex justify-between items-start mb-6">
               <h3 className="text-xl text-white font-light">{currentPhoto.title}</h3>
               <button onClick={() => setShowInfo(false)} className="text-white/40 hover:text-white">
@@ -174,7 +181,7 @@ export function AlbumViewer({ albumId, onBack }: AlbumViewerProps) {
               )}
             </div>
           </div>
-        )}
+        </div>
       </div>
 
       {/* Bottom Indicator Bar */}

@@ -42,32 +42,39 @@ export function Albums({ onAlbumClick }: AlbumsProps) {
               {themeAlbums.map((album) => (
                 <div 
                   key={album.id} 
-                  className="group w-80 flex-shrink-0 bg-zinc-900 rounded-lg overflow-hidden border border-white/5 hover:border-white/20 transition-all cursor-pointer"
+                  className="group w-80 flex-shrink-0 cursor-pointer"
                   onClick={() => onAlbumClick(album.id)}
                 >
-                  <div className="aspect-[3/2] relative overflow-hidden bg-zinc-800">
+                  {/* Image Container */}
+                  <div className="relative aspect-[4/3] rounded-lg overflow-hidden mb-3">
                     {album.coverPhotoUrl ? (
                       <img
                         src={getOptimizedImageUrl(album.coverPhotoUrl, 600)}
                         alt={album.name}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                         loading="lazy"
                       />
                     ) : (
-                      <div className="absolute inset-0 flex items-center justify-center text-white/20">
+                      <div className="w-full h-full bg-zinc-800 flex items-center justify-center text-white/20">
                         <FolderOpen className="w-12 h-12" />
                       </div>
                     )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
-                    <div className="absolute top-4 right-4 bg-black/50 backdrop-blur-sm px-2 py-1 rounded text-xs text-white border border-white/10">
-                      {album.photoCount} Photos
+                    
+                    {/* Hover Overlay (Optional: slightly darken on hover) */}
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300" />
+
+                    {/* Photo count badge */}
+                    <div className="absolute bottom-3 right-3 bg-black/60 text-white px-2.5 py-0.5 rounded-full text-xs backdrop-blur-sm border border-white/10">
+                      {album.photoCount} photos
                     </div>
                   </div>
-                  <div className="p-5">
-                    <h3 className="text-xl text-white font-medium group-hover:text-blue-400 transition-colors truncate">
+
+                  {/* Text Info */}
+                  <div>
+                    <h3 className="text-white font-medium group-hover:text-white/80 transition-colors truncate">
                       {album.name}
                     </h3>
-                    <p className="text-sm text-white/60 line-clamp-2 mt-1 h-10">
+                    <p className="text-white/60 text-sm line-clamp-1 mt-0.5">
                       {album.description || "No description"}
                     </p>
                   </div>
