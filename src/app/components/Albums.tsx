@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useGallery } from '../hooks/useGallery';
 import { getOptimizedImageUrl } from '../services/cloudinary';
-import { FolderOpen, Plus, Edit2 } from 'lucide-react';
+import { FolderOpen, Plus, Edit2, ArrowRightLeft } from 'lucide-react';
 import { AlbumWithStats } from '../types';
 
 interface AlbumsProps {
@@ -9,9 +9,10 @@ interface AlbumsProps {
   isEditMode?: boolean;
   onAddNewAlbum?: () => void;
   onEditAlbum?: (album: AlbumWithStats) => void;
+  onTransferAlbum?: (album: AlbumWithStats) => void;
 }
 
-export function Albums({ onAlbumClick, isEditMode = false, onAddNewAlbum, onEditAlbum }: AlbumsProps) {
+export function Albums({ onAlbumClick, isEditMode = false, onAddNewAlbum, onEditAlbum, onTransferAlbum }: AlbumsProps) {
   const { albums, loading, error } = useGallery();
 
   const groupedAlbums = useMemo(() => {
@@ -89,17 +90,30 @@ export function Albums({ onAlbumClick, isEditMode = false, onAddNewAlbum, onEdit
                       {album.photoCount} photos
                     </div>
 
-                    {/* Edit Button (Visible on hover in Edit Mode) */}
+                    {/* Edit & Transfer Buttons (Visible on hover in Edit Mode) */}
                     {isEditMode && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onEditAlbum?.(album);
-                        }}
-                        className="absolute top-3 right-3 bg-black/60 text-white p-2 rounded-full backdrop-blur-sm border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/80"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
+                      <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onTransferAlbum?.(album);
+                          }}
+                          className="bg-black/60 text-white p-2 rounded-full backdrop-blur-sm border border-white/10 hover:bg-black/80"
+                          title="Transfer Photos"
+                        >
+                          <ArrowRightLeft className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEditAlbum?.(album);
+                          }}
+                          className="bg-black/60 text-white p-2 rounded-full backdrop-blur-sm border border-white/10 hover:bg-black/80"
+                          title="Edit Album"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     )}
                   </div>
 

@@ -45,7 +45,8 @@ export function Home({ isEditMode }: HomeProps) {
       const containerWidth = Math.min(screenWidth, 1200);
       const targetWidth = containerWidth * pixelRatio;
       
-      const maxWidth = currentPhoto.aspectRatio === 'portrait' ? 2400 : 3200;
+      // Apply same max width constraints as PhotoViewer
+      const maxWidth = currentPhoto.aspectRatio === 'portrait' ? 1800 : 2400;
       const roundedWidth = Math.min(Math.ceil(targetWidth / 100) * 100, maxWidth);
       
       setOptimalWidth(Math.max(roundedWidth, 800));
@@ -138,6 +139,7 @@ export function Home({ isEditMode }: HomeProps) {
           photos={sortedPhotos}
           initialIndex={sortedPhotos.findIndex(p => p.id === selectedPhoto.id)}
           onClose={() => setSelectedPhoto(null)}
+          albumName={undefined} // Home tab doesn't have a specific album context
           isEditMode={isEditMode}
         />
       )}

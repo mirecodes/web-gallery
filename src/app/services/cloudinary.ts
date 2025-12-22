@@ -2,7 +2,10 @@ export const getOptimizedImageUrl = (url: string, width: number = 600) => {
   if (!url.includes('cloudinary.com')) return url;
   
   // 이미 transformation 파라미터가 있는지 확인
-  if (url.includes('/upload/f_auto,q_auto')) return url;
+    if (url.includes('/upload/f_auto,q_auto')) {
+        // 기존의 w_숫자 부분을 찾아서 새로운 w_width로 교체해줍니다.
+        return url.replace(/w_\d+/, `w_${width}`);
+    }
 
   const parts = url.split('/upload/');
   if (parts.length !== 2) return url;

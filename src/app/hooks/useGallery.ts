@@ -7,7 +7,8 @@ import {
   addAlbum,
   updateAlbum,
   deleteAlbum,
-  logDeletedPhoto
+  logDeletedPhoto,
+  updatePhotosAlbumId
 } from '../services/firebase';
 import { uploadToCloudinary } from '../services/cloudinary';
 import { Photo, Album, AlbumWithStats } from '../types';
@@ -98,8 +99,6 @@ export const useGallery = () => {
   
   const updateTheme = async (oldTheme: string, newTheme: string) => {
     const updatedAlbums = albums.map(a => a.theme === oldTheme ? { ...a, theme: newTheme } : a);
-    // This is a batch update, which can be expensive.
-    // For simplicity, we update one by one. For production, a batch write in firebase.ts would be better.
     const updatePromises = updatedAlbums
       .filter(a => a.theme === newTheme)
       .map(a => updateAlbum(a.id, { theme: newTheme }));
@@ -112,11 +111,27 @@ export const useGallery = () => {
     try {
       await deleteAlbum(albumId);
       setAlbums(prev => prev.filter(a => a.id !== albumId));
-      // Photos are not deleted, but become uncategorized. We need to update them.
-      // This is expensive. A better approach is a cloud function.
-      // For now, we will refetch to get the updated (uncategorized) photos.
-      // A more optimized client-side way is to update local state, but let's keep it simple.
       fetchData(); 
+    } catch (err) { console.error(err); throw err; }
+  };
+
+  const transferAlbumPhotos = async (sourceAlbumId: string, targetAlbumId: string, deleteSource: boolean) => {
+    try {
+      const photosToTransfer = photos
+        .filter(p => p.albumId === sourceAlbumId)
+        .map(p => ({ photoId: p.id, chunkId: p._chunkId }));
+
+      if (photosToTransfer.length > 0) {
+        await updatePhotosAlbumId(photosToTransfer, targetAlbumId);
+      }
+
+      if (deleteSource) {
+        await deleteAlbum(sourceAlbumId);
+      }
+      
+      // Refetch to ensure data consistency
+      fetchData();
+
     } catch (err) { console.error(err); throw err; }
   };
 
@@ -195,6 +210,6 @@ export const useGallery = () => {
   return { 
     photos, albums: albumsWithStats, loading, error, refetch: fetchData, 
     uploadAndAddPhoto, batchUploadPhotos, createAlbum, updatePhotoDetails, deletePhotoItem,
-    updateAlbumDetails, updateTheme, deleteAlbumItem
+    updateAlbumDetails, updateTheme, deleteAlbumItem, transferAlbumPhotos
   };
 };

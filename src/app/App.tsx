@@ -8,6 +8,7 @@ import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
 import { UploadModal } from './components/UploadModal';
 import { CreateAlbumModal } from './components/CreateAlbumModal';
 import { EditAlbumModal } from './components/EditAlbumModal';
+import { TransferAlbumModal } from './components/TransferAlbumModal';
 import { AlbumWithStats } from './types';
 
 export default function App() {
@@ -20,6 +21,7 @@ export default function App() {
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isCreateAlbumOpen, setIsCreateAlbumOpen] = useState(false);
   const [editingAlbum, setEditingAlbum] = useState<AlbumWithStats | null>(null);
+  const [transferringAlbum, setTransferringAlbum] = useState<AlbumWithStats | null>(null);
 
   // Handle user authentication state
   useEffect(() => {
@@ -68,6 +70,7 @@ export default function App() {
       <UploadModal isOpen={isUploadOpen} onClose={() => setIsUploadOpen(false)} />
       <CreateAlbumModal isOpen={isCreateAlbumOpen} onClose={() => setIsCreateAlbumOpen(false)} />
       <EditAlbumModal isOpen={!!editingAlbum} onClose={() => setEditingAlbum(null)} album={editingAlbum} />
+      <TransferAlbumModal isOpen={!!transferringAlbum} onClose={() => setTransferringAlbum(null)} sourceAlbum={transferringAlbum} />
 
       <main className="pt-14">
         {activeTab === 'home' && <Home isEditMode={isEditMode} />}
@@ -87,6 +90,7 @@ export default function App() {
               isEditMode={isEditMode}
               onAddNewAlbum={() => setIsCreateAlbumOpen(true)}
               onEditAlbum={setEditingAlbum}
+              onTransferAlbum={setTransferringAlbum}
             />
           )
         )}

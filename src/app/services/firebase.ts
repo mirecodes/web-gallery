@@ -73,7 +73,7 @@ export const addPhoto = async (photo: Photo): Promise<string> => {
   const metadataRef = doc(db, GALLERY_COLLECTION, METADATA_DOC);
   const metadataSnap = await getDoc(metadataRef);
   let metadata = metadataSnap.data() as Metadata;
-
+  
   if (!metadata) {
     metadata = { albums: [], photoChunkIds: [] };
     await setDoc(metadataRef, metadata);
@@ -104,7 +104,7 @@ export const addPhoto = async (photo: Photo): Promise<string> => {
     targetChunkId = `chunk_${Date.now()}`;
     const newChunkRef = doc(db, GALLERY_COLLECTION, METADATA_DOC, PHOTO_CHUNKS_COLLECTION, targetChunkId);
     await setDoc(newChunkRef, { data: [photo] });
-
+    
     await updateDoc(metadataRef, {
       photoChunkIds: arrayUnion(targetChunkId)
     });
@@ -129,7 +129,7 @@ export const updatePhoto = async (photoId: string, chunkId: string, details: Par
     if (photoIndex > -1) {
       const updatedList = [...chunkData];
       updatedList[photoIndex] = { ...updatedList[photoIndex], ...details };
-
+      
       await updateDoc(chunkRef, { data: updatedList });
     } else {
       throw new Error(`Photo with id ${photoId} not found in chunk ${chunkId}.`);
@@ -152,11 +152,40 @@ export const deletePhoto = async (photoId: string, chunkId: string): Promise<{ d
   const updatedList = chunkData.filter(p => p.id !== photoId);
   await updateDoc(chunkRef, { data: updatedList });
 
-  // 2. Check if album needs to be deleted (This requires fetching all photos, which is expensive.
+  // 2. Check if album needs to be deleted (This requires fetching all photos, which is expensive. 
   // Instead, we will rely on the client-side state in useGallery to determine if an album is empty)
   // For now, we just return undefined for deletedAlbumId and handle album cleanup in useGallery.
-
+  
   return { deletedAlbumId: undefined };
+};
+
+export const updatePhotosAlbumId = async (updates: { photoId: string, chunkId: string }[], newAlbumId: string): Promise<void> => {
+  // Group updates by chunkId to minimize reads/writes
+  const updatesByChunk: Record<string, string[]> = {};
+  updates.forEach(({ photoId, chunkId }) => {
+    if (!updatesByChunk[chunkId]) updatesByChunk[chunkId] = [];
+    updatesByChunk[chunkId].push(photoId);
+  });
+
+  // Process each chunk
+  const promises = Object.entries(updatesByChunk).map(async ([chunkId, photoIds]) => {
+    const chunkRef = doc(db, GALLERY_COLLECTION, METADATA_DOC, PHOTO_CHUNKS_COLLECTION, chunkId);
+    const chunkSnap = await getDoc(chunkRef);
+
+    if (chunkSnap.exists()) {
+      const chunkData = chunkSnap.data().data as Photo[];
+      const updatedList = chunkData.map(photo => {
+        if (photoIds.includes(photo.id)) {
+          return { ...photo, albumId: newAlbumId };
+        }
+        return photo;
+      });
+      
+      await updateDoc(chunkRef, { data: updatedList });
+    }
+  });
+
+  await Promise.all(promises);
 };
 
 // --- Albums ---

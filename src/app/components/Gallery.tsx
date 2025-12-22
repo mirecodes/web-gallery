@@ -129,7 +129,7 @@ export function Gallery({ albumId, onBack, isEditMode = false }: GalleryProps) {
                 onClick={() => setSelectedPhoto(photo)}
               >
                 <img
-                  src={getOptimizedImageUrl(photo.url, 600)}
+                  src={getOptimizedImageUrl(photo.url, photo.aspectRatio === 'portrait' ? 400 : 800)}
                   alt={photo.title}
                   loading="lazy"
                   className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
