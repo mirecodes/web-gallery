@@ -91,10 +91,10 @@ export function Gallery({ albumId, onBack }: GalleryProps) {
               }`}
             >
               <div
-                className={`group relative overflow-hidden cursor-pointer rounded-lg w-full h-full ${
+                className={`group relative overflow-hidden cursor-pointer rounded-lg w-full h-full aspect-square ${
                   photo.aspectRatio === 'landscape'
-                    ? 'aspect-[3/2]'
-                    : 'aspect-[3/4]'
+                    ? 'md:aspect-[3/2]'
+                    : 'md:aspect-[3/4]'
                 }`}
                 onClick={() => setSelectedPhoto(photo)}
               >

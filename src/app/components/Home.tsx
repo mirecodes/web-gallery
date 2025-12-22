@@ -22,16 +22,18 @@ export function Home() {
     return dateB - dateA;
   });
 
+  const carouselPhotos = filteredPhotos.slice(0, 12);
+
   useEffect(() => {
-    if (filteredPhotos.length === 0) return;
+    if (carouselPhotos.length === 0) return;
     const interval = setInterval(() => {
-      setCurrentPhotoIndex((prevIndex) => (prevIndex + 1) % filteredPhotos.length);
+      setCurrentPhotoIndex((prevIndex) => (prevIndex + 1) % carouselPhotos.length);
     }, 4000);
 
     return () => clearInterval(interval);
-  }, [filteredPhotos.length]);
+  }, [carouselPhotos.length]);
 
-  const currentPhoto = filteredPhotos[currentPhotoIndex] || photos[0];
+  const currentPhoto = carouselPhotos[currentPhotoIndex] || photos[0];
 
   // Calculate optimal image width based on screen size and pixel density
   useEffect(() => {
@@ -41,18 +43,12 @@ export function Home() {
       const screenWidth = window.innerWidth;
       const pixelRatio = window.devicePixelRatio || 1;
       
-      // Home slideshow container is max-w-6xl (approx 1152px)
-      // We use the smaller of screen width or container max width
       const containerWidth = Math.min(screenWidth, 1200);
       const targetWidth = containerWidth * pixelRatio;
       
-      // Set max width based on aspect ratio
       const maxWidth = currentPhoto.aspectRatio === 'portrait' ? 2400 : 3200;
-
-      // Round up to nearest 100px for better caching
       const roundedWidth = Math.min(Math.ceil(targetWidth / 100) * 100, maxWidth);
       
-      // Ensure minimum quality of 800px
       setOptimalWidth(Math.max(roundedWidth, 800));
     };
 
@@ -114,7 +110,7 @@ export function Home() {
 
             {/* Photo Counter */}
             <div className="flex justify-center gap-2 mt-6">
-              {filteredPhotos.slice(0, 20).map((_, index) => (
+              {carouselPhotos.map((_, index) => (
                 <button
                   key={index}
                   onClick={() => setCurrentPhotoIndex(index)}
@@ -132,8 +128,8 @@ export function Home() {
         {/* Recent Photos Grid */}
         <div className="max-w-6xl mx-auto mt-16">
           <h3 className="text-white mb-6">Recent Photos</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {filteredPhotos.slice(0, 8).map((photo) => (
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            {filteredPhotos.slice(0, 20).map((photo) => (
               <div
                 key={photo.id}
                 className="aspect-square rounded overflow-hidden cursor-pointer group"
