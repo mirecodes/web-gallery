@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react';
-import { MapPin, Camera, Aperture, Clock, Calendar, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useGallery } from '../hooks/useGallery';
 import { getOptimizedImageUrl } from '../services/cloudinary';
 import { Photo } from '../types';
+import { PhotoViewer } from './PhotoViewer';
 
 interface GalleryProps {
   albumId?: string;
@@ -14,8 +15,15 @@ export function Gallery({ albumId, onBack }: GalleryProps) {
   const { photos, albums, loading, error } = useGallery();
 
   const filteredPhotos = useMemo(() => {
-    if (!albumId) return photos;
-    return photos.filter(photo => photo.albumId === albumId);
+    let result = photos;
+    if (albumId) {
+      result = photos.filter(photo => photo.albumId === albumId);
+    }
+    return result.sort((a, b) => {
+      const dateA = new Date(a.takenAt || a.date).getTime();
+      const dateB = new Date(b.takenAt || b.date).getTime();
+      return dateB - dateA;
+    });
   }, [photos, albumId]);
 
   const currentAlbum = useMemo(() => {
@@ -94,95 +102,12 @@ export function Gallery({ albumId, onBack }: GalleryProps) {
 
       {/* Lightbox */}
       {selectedPhoto && (
-        <div
-          className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-6"
-          onClick={() => setSelectedPhoto(null)}
-        >
-          <div className="max-w-6xl w-full max-h-[90vh] flex flex-col md:flex-row gap-6" onClick={e => e.stopPropagation()}>
-            {/* Image Container */}
-            <div className="flex-1 relative flex items-center justify-center bg-black/50 rounded-lg overflow-hidden">
-              <img
-                src={getOptimizedImageUrl(selectedPhoto.url, 1200)}
-                alt={selectedPhoto.title}
-                className="max-w-full max-h-[85vh] object-contain"
-              />
-            </div>
-
-            {/* Info Panel */}
-            <div className="w-full md:w-80 flex-shrink-0 text-white space-y-6 overflow-y-auto max-h-[30vh] md:max-h-[85vh] p-2">
-              <div>
-                <h3 className="text-2xl font-light mb-2">{selectedPhoto.title}</h3>
-                <div className="flex items-center gap-2 text-white/60 text-sm">
-                  <Calendar className="w-4 h-4" />
-                  <span>{selectedPhoto.takenAt ? new Date(selectedPhoto.takenAt).toLocaleDateString() : selectedPhoto.date}</span>
-                </div>
-                {selectedPhoto.location && (
-                  <div className="flex items-center gap-2 text-white/60 text-sm mt-1">
-                    <MapPin className="w-4 h-4" />
-                    <span>{selectedPhoto.location}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* EXIF Data */}
-              {(selectedPhoto.cameraModel || selectedPhoto.fNumber) && (
-                <div className="border-t border-white/10 pt-4 space-y-3">
-                  <h4 className="text-sm font-medium text-white/80 uppercase tracking-wider">Details</h4>
-                  
-                  {selectedPhoto.cameraModel && (
-                    <div className="flex items-center gap-3 text-sm text-white/70">
-                      <Camera className="w-4 h-4" />
-                      <span>{selectedPhoto.cameraMake} {selectedPhoto.cameraModel}</span>
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-2 gap-2 text-sm text-white/70">
-                    {selectedPhoto.fNumber && (
-                      <div className="flex items-center gap-2">
-                        <Aperture className="w-4 h-4" />
-                        <span>f/{selectedPhoto.fNumber}</span>
-                      </div>
-                    )}
-                    {selectedPhoto.exposureTime && (
-                      <div className="flex items-center gap-2">
-                        <Clock className="w-4 h-4" />
-                        <span>1/{Math.round(1/selectedPhoto.exposureTime)}s</span>
-                      </div>
-                    )}
-                    {selectedPhoto.iso && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold border border-white/40 px-1 rounded">ISO</span>
-                        <span>{selectedPhoto.iso}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* GPS Data */}
-              {selectedPhoto.gps && (
-                <div className="border-t border-white/10 pt-4">
-                  <a 
-                    href={`https://www.google.com/maps/search/?api=1&query=${selectedPhoto.gps.latitude},${selectedPhoto.gps.longitude}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300 transition-colors"
-                  >
-                    <MapPin className="w-4 h-4" />
-                    View on Map
-                  </a>
-                </div>
-              )}
-            </div>
-
-            <button
-              onClick={() => setSelectedPhoto(null)}
-              className="absolute top-4 right-4 md:top-0 md:right-0 md:relative text-white/60 hover:text-white p-2"
-            >
-              ×
-            </button>
-          </div>
-        </div>
+        <PhotoViewer
+          photos={filteredPhotos}
+          initialIndex={filteredPhotos.findIndex(p => p.id === selectedPhoto.id)}
+          onClose={() => setSelectedPhoto(null)}
+          albumName={currentAlbum?.name}
+        />
       )}
     </>
   );

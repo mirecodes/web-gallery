@@ -3,6 +3,7 @@ import { Search, MapPin } from 'lucide-react';
 import { useGallery } from '../hooks/useGallery';
 import { getOptimizedImageUrl } from '../services/cloudinary';
 import { Photo } from '../types';
+import { PhotoViewer } from './PhotoViewer';
 
 export function Home() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -14,7 +15,11 @@ export function Home() {
     (photo) =>
       photo.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       photo.location?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  ).sort((a, b) => {
+    const dateA = new Date(a.takenAt || a.date).getTime();
+    const dateB = new Date(b.takenAt || b.date).getTime();
+    return dateB - dateA;
+  });
 
   useEffect(() => {
     if (filteredPhotos.length === 0) return;
@@ -82,7 +87,7 @@ export function Home() {
 
             {/* Photo Counter */}
             <div className="flex justify-center gap-2 mt-6">
-              {filteredPhotos.map((_, index) => (
+              {filteredPhotos.slice(0, 20).map((_, index) => (
                 <button
                   key={index}
                   onClick={() => setCurrentPhotoIndex(index)}
@@ -121,36 +126,11 @@ export function Home() {
 
       {/* Lightbox */}
       {selectedPhoto && (
-        <div
-          className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-6"
-          onClick={() => setSelectedPhoto(null)}
-        >
-          <div className="max-w-6xl max-h-[90vh] relative">
-            <img
-              src={getOptimizedImageUrl(selectedPhoto.url, 1200)}
-              alt={selectedPhoto.title}
-              className="max-w-full max-h-[90vh] object-contain"
-            />
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
-              <h3 className="text-white">{selectedPhoto.title}</h3>
-              <div className="flex items-center gap-4 text-sm text-white/60 mt-1">
-                <span>{selectedPhoto.date}</span>
-                {selectedPhoto.location && (
-                  <div className="flex items-center gap-1">
-                    <MapPin className="w-4 h-4" />
-                    <span>{selectedPhoto.location}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-            <button
-              onClick={() => setSelectedPhoto(null)}
-              className="absolute top-4 right-4 text-white/80 hover:text-white text-3xl"
-            >
-              ×
-            </button>
-          </div>
-        </div>
+        <PhotoViewer
+          photos={filteredPhotos}
+          initialIndex={filteredPhotos.findIndex(p => p.id === selectedPhoto.id)}
+          onClose={() => setSelectedPhoto(null)}
+        />
       )}
     </>
   );
