@@ -1,14 +1,17 @@
 import { useMemo } from 'react';
 import { useGallery } from '../hooks/useGallery';
 import { getOptimizedImageUrl } from '../services/cloudinary';
-import { FolderOpen } from 'lucide-react';
+import { FolderOpen, Plus, Edit2 } from 'lucide-react';
 import { AlbumWithStats } from '../types';
 
 interface AlbumsProps {
   onAlbumClick: (albumId: string) => void;
+  isEditMode?: boolean;
+  onAddNewAlbum?: () => void;
+  onEditAlbum?: (album: AlbumWithStats) => void;
 }
 
-export function Albums({ onAlbumClick }: AlbumsProps) {
+export function Albums({ onAlbumClick, isEditMode = false, onAddNewAlbum, onEditAlbum }: AlbumsProps) {
   const { albums, loading, error } = useGallery();
 
   const groupedAlbums = useMemo(() => {
@@ -34,6 +37,26 @@ export function Albums({ onAlbumClick }: AlbumsProps) {
   return (
     <div className="max-w-full mx-auto py-12">
       <div className="space-y-12">
+        {isEditMode && (
+          <section>
+            <h3 className="text-xl text-white font-semibold mb-4 px-6">Add a new album</h3>
+            <div className="flex overflow-x-auto space-x-6 px-6 pb-4 -mx-6 scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent">
+              <div className="w-6 flex-shrink-0"></div> {/* Start padding */}
+              <div 
+                className="group w-[25rem] flex-shrink-0 cursor-pointer"
+                onClick={onAddNewAlbum}
+              >
+                <div className="relative aspect-[4/3] rounded-2xl overflow-hidden mb-3 border-2 border-dashed border-white/20 hover:border-white/40 transition-colors flex items-center justify-center">
+                  <div className="text-center text-white/60 group-hover:text-white/80 transition-colors">
+                    <Plus className="w-12 h-12 mx-auto" />
+                    <p className="mt-2">Add New Album</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
         {Object.entries(groupedAlbums).map(([theme, themeAlbums]) => (
           <section key={theme}>
             <h3 className="text-xl text-white font-semibold mb-4 px-6">{theme}</h3>
@@ -42,7 +65,7 @@ export function Albums({ onAlbumClick }: AlbumsProps) {
               {themeAlbums.map((album) => (
                 <div 
                   key={album.id} 
-                  className="group w-[25rem] flex-shrink-0 cursor-pointer"
+                  className="group w-[25rem] flex-shrink-0 cursor-pointer relative"
                   onClick={() => onAlbumClick(album.id)}
                 >
                   {/* Image Container */}
@@ -65,6 +88,19 @@ export function Albums({ onAlbumClick }: AlbumsProps) {
                     <div className="absolute bottom-3 right-3 bg-black/60 text-white px-2.5 py-0.5 rounded-full text-xs backdrop-blur-sm border border-white/10 opacity-75 group-hover:opacity-100 transition-opacity">
                       {album.photoCount} photos
                     </div>
+
+                    {/* Edit Button (Visible on hover in Edit Mode) */}
+                    {isEditMode && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEditAlbum?.(album);
+                        }}
+                        className="absolute top-3 right-3 bg-black/60 text-white p-2 rounded-full backdrop-blur-sm border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/80"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
 
                   {/* Text Info */}
@@ -93,7 +129,7 @@ export function Albums({ onAlbumClick }: AlbumsProps) {
           </section>
         ))}
 
-        {albums.length === 0 && (
+        {albums.length === 0 && !isEditMode && (
           <div className="col-span-full text-center py-20 text-white/40 px-6">
             <FolderOpen className="w-16 h-16 mx-auto mb-4 opacity-50" />
             <p className="text-lg">No albums yet</p>

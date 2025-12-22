@@ -5,6 +5,10 @@ import { Home } from './components/Home';
 import { Albums } from './components/Albums';
 import { AlbumViewer } from './components/AlbumViewer';
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
+import { UploadModal } from './components/UploadModal';
+import { CreateAlbumModal } from './components/CreateAlbumModal';
+import { EditAlbumModal } from './components/EditAlbumModal';
+import { AlbumWithStats } from './types';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('home');
@@ -13,6 +17,9 @@ export default function App() {
   // Centralized state management
   const [user, setUser] = useState<User | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [isCreateAlbumOpen, setIsCreateAlbumOpen] = useState(false);
+  const [editingAlbum, setEditingAlbum] = useState<AlbumWithStats | null>(null);
 
   // Handle user authentication state
   useEffect(() => {
@@ -55,8 +62,13 @@ export default function App() {
         user={user}
         isEditMode={isEditMode}
         onEditModeToggle={handleEditModeToggle}
+        onUploadClick={() => setIsUploadOpen(true)}
       />
       
+      <UploadModal isOpen={isUploadOpen} onClose={() => setIsUploadOpen(false)} />
+      <CreateAlbumModal isOpen={isCreateAlbumOpen} onClose={() => setIsCreateAlbumOpen(false)} />
+      <EditAlbumModal isOpen={!!editingAlbum} onClose={() => setEditingAlbum(null)} album={editingAlbum} />
+
       <main className="pt-14">
         {activeTab === 'home' && <Home isEditMode={isEditMode} />}
         
@@ -70,7 +82,12 @@ export default function App() {
               isEditMode={isEditMode}
             />
           ) : (
-            <Albums onAlbumClick={handleAlbumClick} />
+            <Albums 
+              onAlbumClick={handleAlbumClick} 
+              isEditMode={isEditMode}
+              onAddNewAlbum={() => setIsCreateAlbumOpen(true)}
+              onEditAlbum={setEditingAlbum}
+            />
           )
         )}
       </main>

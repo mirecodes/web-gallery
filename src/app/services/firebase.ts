@@ -59,9 +59,7 @@ export const updatePhoto = async (photoId: string, details: Partial<Photo>): Pro
       const updatedList = [...galleryData.list];
       updatedList[photoIndex] = { ...updatedList[photoIndex], ...details };
       
-      await updateDoc(docRef, {
-        list: updatedList
-      });
+      await updateDoc(docRef, { list: updatedList });
     } else {
       throw new Error(`Photo with id ${photoId} not found.`);
     }
@@ -72,21 +70,15 @@ export const deletePhoto = async (photoId: string): Promise<{ deletedAlbumId?: s
   const docRef = doc(db, GALLERY_COLLECTION, ALL_PHOTOS_DOC);
   const docSnap = await getDoc(docRef);
 
-  if (!docSnap.exists()) {
-    throw new Error("Gallery data not found");
-  }
-
+  if (!docSnap.exists()) throw new Error("Gallery data not found");
+  
   const galleryData = docSnap.data() as GalleryDocument;
   const photoToDelete = galleryData.list.find(p => p.id === photoId);
 
-  if (!photoToDelete) {
-    throw new Error("Photo not found");
-  }
+  if (!photoToDelete) throw new Error("Photo not found");
 
-  // 1. Remove photo from list
   const updatedList = galleryData.list.filter(p => p.id !== photoId);
   
-  // 2. Check if album needs to be deleted
   let updatedAlbums = galleryData.albums;
   let deletedAlbumId: string | undefined;
 
@@ -98,13 +90,8 @@ export const deletePhoto = async (photoId: string): Promise<{ deletedAlbumId?: s
     }
   }
 
-  // 3. Update Firestore
-  await updateDoc(docRef, {
-    list: updatedList,
-    albums: updatedAlbums
-  });
+  await updateDoc(docRef, { list: updatedList, albums: updatedAlbums });
 
-  // 4. Log deletion for Cloudinary cleanup
   try {
     await addDoc(collection(db, DELETED_PHOTOS_COLLECTION), {
       photoId: photoToDelete.id,
@@ -114,8 +101,66 @@ export const deletePhoto = async (photoId: string): Promise<{ deletedAlbumId?: s
     });
   } catch (e) {
     console.error("Failed to log deleted photo:", e);
-    // Don't throw here, as the main deletion was successful
   }
 
   return { deletedAlbumId };
+};
+
+export const updateAlbum = async (albumId: string, details: Partial<Album>): Promise<void> => {
+  const docRef = doc(db, GALLERY_COLLECTION, ALL_PHOTOS_DOC);
+  const docSnap = await getDoc(docRef);
+
+  if (docSnap.exists()) {
+    const galleryData = docSnap.data() as GalleryDocument;
+    const albumIndex = galleryData.albums.findIndex(a => a.id === albumId);
+
+    if (albumIndex > -1) {
+      const updatedAlbums = [...galleryData.albums];
+      updatedAlbums[albumIndex] = { ...updatedAlbums[albumIndex], ...details };
+      await updateDoc(docRef, { albums: updatedAlbums });
+    } else {
+      throw new Error(`Album with id ${albumId} not found.`);
+    }
+  }
+};
+
+export const updateThemeName = async (oldTheme: string, newTheme: string): Promise<void> => {
+  const docRef = doc(db, GALLERY_COLLECTION, ALL_PHOTOS_DOC);
+  const docSnap = await getDoc(docRef);
+
+  if (docSnap.exists()) {
+    const galleryData = docSnap.data() as GalleryDocument;
+    const updatedAlbums = galleryData.albums.map(album => {
+      if (album.theme === oldTheme) {
+        return { ...album, theme: newTheme };
+      }
+      return album;
+    });
+    await updateDoc(docRef, { albums: updatedAlbums });
+  }
+};
+
+export const deleteAlbum = async (albumId: string): Promise<void> => {
+  const docRef = doc(db, GALLERY_COLLECTION, ALL_PHOTOS_DOC);
+  const docSnap = await getDoc(docRef);
+
+  if (docSnap.exists()) {
+    const galleryData = docSnap.data() as GalleryDocument;
+    
+    // 1. Remove the album
+    const updatedAlbums = galleryData.albums.filter(a => a.id !== albumId);
+    
+    // 2. Remove albumId from photos that belonged to this album
+    const updatedList = galleryData.list.map(photo => {
+      if (photo.albumId === albumId) {
+        return { ...photo, albumId: '' };
+      }
+      return photo;
+    });
+
+    await updateDoc(docRef, { 
+      albums: updatedAlbums,
+      list: updatedList
+    });
+  }
 };

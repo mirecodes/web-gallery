@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { getGalleryData, addPhoto, addAlbum, updatePhoto, deletePhoto } from '../services/firebase';
+import { getGalleryData, addPhoto, addAlbum, updatePhoto, deletePhoto, updateAlbum, updateThemeName, deleteAlbum } from '../services/firebase';
 import { uploadToCloudinary } from '../services/cloudinary';
 import { Photo, Album, AlbumWithStats } from '../types';
 import exifr from 'exifr';
@@ -89,6 +89,44 @@ export const useGallery = () => {
       }
     } catch (err) {
       setError('Failed to delete photo.');
+      console.error(err);
+      throw err;
+    }
+  };
+
+  const updateAlbumDetails = async (albumId: string, details: Partial<Album>) => {
+    try {
+      await updateAlbum(albumId, details);
+      setAlbums(prevAlbums => 
+        prevAlbums.map(a => a.id === albumId ? { ...a, ...details } : a)
+      );
+    } catch (err) {
+      setError('Failed to update album details.');
+      console.error(err);
+      throw err;
+    }
+  };
+
+  const updateTheme = async (oldTheme: string, newTheme: string) => {
+    try {
+      await updateThemeName(oldTheme, newTheme);
+      setAlbums(prevAlbums => 
+        prevAlbums.map(a => a.theme === oldTheme ? { ...a, theme: newTheme } : a)
+      );
+    } catch (err) {
+      setError('Failed to update theme.');
+      console.error(err);
+      throw err;
+    }
+  };
+
+  const deleteAlbumItem = async (albumId: string) => {
+    try {
+      await deleteAlbum(albumId);
+      setAlbums(prevAlbums => prevAlbums.filter(a => a.id !== albumId));
+      setPhotos(prevPhotos => prevPhotos.map(p => p.albumId === albumId ? { ...p, albumId: '' } : p));
+    } catch (err) {
+      setError('Failed to delete album.');
       console.error(err);
       throw err;
     }
@@ -204,6 +242,9 @@ export const useGallery = () => {
     batchUploadPhotos,
     createAlbum,
     updatePhotoDetails,
-    deletePhotoItem
+    deletePhotoItem,
+    updateAlbumDetails,
+    updateTheme,
+    deleteAlbumItem
   };
 };
