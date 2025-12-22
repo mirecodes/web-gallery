@@ -33,6 +33,12 @@ export interface Album {
   description: string;
   theme: string;
   createdAt: string;
+  // Note: yearRange is calculated on the client-side in useGallery.ts
+  // For a more robust solution, this should be updated via a server-side function.
+  yearRange?: {
+    start: number;
+    end: number;
+  };
 }
 
 export interface GalleryDocument {
