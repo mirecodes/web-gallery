@@ -15,15 +15,37 @@ export function Gallery({ albumId, onBack }: GalleryProps) {
   const { photos, albums, loading, error } = useGallery();
 
   const filteredPhotos = useMemo(() => {
-    let result = photos;
-    if (albumId) {
-      result = photos.filter(photo => photo.albumId === albumId);
+    // 1. Filter and sort photos
+    let sortedPhotos = photos
+      .filter(photo => !albumId || photo.albumId === albumId)
+      .sort((a, b) => {
+        const dateA = new Date(a.takenAt || a.date).getTime();
+        const dateB = new Date(b.takenAt || b.date).getTime();
+        return dateB - dateA;
+      });
+
+    // 2. Apply layout optimization to prevent gaps
+    const layoutOptimizedPhotos = [...sortedPhotos];
+    let col = 0;
+    for (let i = 0; i < layoutOptimizedPhotos.length - 1; i++) {
+      const startCol = col % 6;
+      const photo1 = layoutOptimizedPhotos[i];
+      const photo2 = layoutOptimizedPhotos[i + 1];
+
+      const photo1Span = photo1.aspectRatio === 'landscape' ? 2 : 1;
+      const photo2Span = photo2.aspectRatio === 'landscape' ? 2 : 1;
+
+      // If a portrait photo at column 5 is followed by a landscape photo, swap them.
+      if (startCol === 4 && photo1Span === 1 && photo2Span === 2) {
+        [layoutOptimizedPhotos[i], layoutOptimizedPhotos[i + 1]] = [photo2, photo1];
+      }
+
+      // Update column count for the next iteration using the (potentially swapped) photo's span.
+      const currentSpan = layoutOptimizedPhotos[i].aspectRatio === 'landscape' ? 2 : 1;
+      col += currentSpan;
     }
-    return result.sort((a, b) => {
-      const dateA = new Date(a.takenAt || a.date).getTime();
-      const dateB = new Date(b.takenAt || b.date).getTime();
-      return dateB - dateA;
-    });
+
+    return layoutOptimizedPhotos;
   }, [photos, albumId]);
 
   const currentAlbum = useMemo(() => {
@@ -58,7 +80,7 @@ export function Gallery({ albumId, onBack }: GalleryProps) {
         )}
 
         {/* Photo Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-0">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-0">
           {filteredPhotos.map((photo) => (
             <div
               key={photo.id}
