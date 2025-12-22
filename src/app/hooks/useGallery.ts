@@ -15,7 +15,19 @@ export const useGallery = () => {
     try {
       setLoading(true);
       const { list, albums: albumList } = await getGalleryData();
-      setPhotos(list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+
+      // --- Data Integrity Check ---
+      const validAlbumIds = new Set(albumList.map(a => a.id));
+      const validatedPhotos = list.map(photo => {
+        // If a photo has an albumId that no longer exists, treat it as un-albumed.
+        if (photo.albumId && !validAlbumIds.has(photo.albumId)) {
+          return { ...photo, albumId: '' };
+        }
+        return photo;
+      });
+      // --- End of Check ---
+
+      setPhotos(validatedPhotos.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
       setAlbums(albumList.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
     } catch (err) {
       setError('Failed to fetch gallery data.');
@@ -124,13 +136,10 @@ export const useGallery = () => {
       const total = files.length;
       const newPhotos: Photo[] = [];
 
-      // Process files sequentially to avoid overwhelming the server/browser
-      // or use Promise.all for parallel if preferred. Here we use a mix: chunks of 3
       const chunkSize = 3;
       for (let i = 0; i < files.length; i += chunkSize) {
         const chunk = files.slice(i, i + chunkSize);
         const promises = chunk.map(async (file) => {
-          // Remove extension from filename for title
           const title = file.name.replace(/\.[^/.]+$/, "");
           const photo = await processAndUploadSinglePhoto(file, title, albumId);
           return photo;

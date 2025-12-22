@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { getOptimizedImageUrl } from '../services/cloudinary';
-import { ArrowLeft, ChevronLeft, ChevronRight, Info, X, MapPin, Calendar, Camera, Aperture, Clock } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Info, X, MapPin, Calendar, Camera, Aperture, Clock, Folder } from 'lucide-react';
 import { Photo } from '../types';
+import { useGallery } from '../hooks/useGallery';
 
 interface PhotoViewerProps {
   photos: Photo[];
@@ -17,8 +18,15 @@ export function PhotoViewer({ photos, initialIndex, onClose, albumName, showThum
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [optimalWidth, setOptimalWidth] = useState(1600); // Default width, will be updated
   const thumbnailScrollRef = useRef<HTMLDivElement>(null);
+  
+  const { albums } = useGallery();
 
   const currentPhoto = photos[currentIndex];
+
+  const currentPhotoAlbum = useMemo(() => {
+    if (!currentPhoto || !currentPhoto.albumId) return null;
+    return albums.find(a => a.id === currentPhoto.albumId);
+  }, [currentPhoto, albums]);
 
   const handlePrev = useCallback(() => {
     setCurrentIndex((prev) => (prev === 0 ? photos.length - 1 : prev - 1));
@@ -180,6 +188,17 @@ export function PhotoViewer({ photos, initialIndex, onClose, albumName, showThum
                   </div>
                 )}
               </div>
+
+              {/* Album Info */}
+              {currentPhotoAlbum && (
+                <div className="border-t border-white/10 pt-4">
+                  <h4 className="text-xs font-bold text-white/40 uppercase tracking-wider mb-2">Album</h4>
+                  <div className="flex items-center gap-2 text-white/80 text-sm">
+                    <Folder className="w-4 h-4 flex-shrink-0" />
+                    <span>{currentPhotoAlbum.name}</span>
+                  </div>
+                </div>
+              )}
 
               {(currentPhoto.cameraModel || currentPhoto.fNumber) && (
                 <div className="border-t border-white/10 pt-4 space-y-3">
