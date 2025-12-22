@@ -1,16 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { UploadModal } from './UploadModal';
-import { Plus } from 'lucide-react';
-import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, User } from 'firebase/auth';
+import { Plus, Edit, Eye } from 'lucide-react';
+import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, User } from 'firebase/auth';
 
 interface NavigationProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
+  user: User | null;
+  isEditMode: boolean;
+  onEditModeToggle: () => void;
 }
 
-export function Navigation({ activeTab, onTabChange }: NavigationProps) {
+export function Navigation({ activeTab, onTabChange, user, isEditMode, onEditModeToggle }: NavigationProps) {
   const [isUploadOpen, setIsUploadOpen] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
   
   const tabs = [
     { id: 'home', label: 'Home' },
@@ -18,30 +20,16 @@ export function Navigation({ activeTab, onTabChange }: NavigationProps) {
     { id: 'albums', label: 'Albums' },
   ];
 
-  useEffect(() => {
-    const auth = getAuth();
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-    });
-    return () => unsubscribe();
-  }, []);
-
   const handleLogin = async () => {
     try {
       const auth = getAuth();
       const provider = new GoogleAuthProvider();
-      // Force account selection to avoid auto-login issues
-      provider.setCustomParameters({
-        prompt: 'select_account'
-      });
+      provider.setCustomParameters({ prompt: 'select_account' });
       await signInWithPopup(auth, provider);
-      // User state will be updated by onAuthStateChanged
     } catch (error: any) {
       console.error('Login failed:', error);
-      if (error.code === 'auth/popup-closed-by-user') {
-        alert('Login popup was closed.');
-      } else if (error.code === 'auth/cancelled-popup-request') {
-        // Ignore this error as it happens when multiple popups are triggered
+      if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
+        // Ignore user-cancelled popups
       } else {
         alert(`Login failed: ${error.message}`);
       }
@@ -86,10 +74,23 @@ export function Navigation({ activeTab, onTabChange }: NavigationProps) {
               ))}
             </div>
 
-            {/* Auth & Upload Actions */}
+            {/* Auth & Admin Actions */}
             <div className="flex items-center gap-4">
               {user ? (
                 <>
+                  <button
+                    onClick={onEditModeToggle}
+                    className={`w-24 flex items-center justify-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                      isEditMode
+                        ? 'bg-zinc-800 text-white animate-rotating-border'
+                        : 'bg-white/20 text-white/80 hover:bg-white/30'
+                    }`}
+                  >
+                    <span className="w-4 h-4 inline-flex items-center justify-center">
+                      {isEditMode ? <Edit className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </span>
+                    {isEditMode ? 'Editor' : 'Viewer'}
+                  </button>
                   <button
                     onClick={() => setIsUploadOpen(true)}
                     className="flex items-center gap-2 bg-white text-black px-3 py-1.5 rounded-full text-sm font-medium hover:bg-white/90 transition-colors"
