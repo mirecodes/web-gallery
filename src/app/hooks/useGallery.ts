@@ -209,11 +209,14 @@ export const useGallery = () => {
       const chunkSize = 3;
       for (let i = 0; i < files.length; i += chunkSize) {
         const chunk = files.slice(i, i + chunkSize);
-        const promises = chunk.map(file => processAndUploadSinglePhoto(file, file.name.replace(/\.[^/.]+$/, ""), albumId));
+        const promises = chunk.map(async (file) => {
+          const photo = await processAndUploadSinglePhoto(file, file.name.replace(/\.[^/.]+$/, ""), albumId);
+          completedCount++;
+          onProgress?.(completedCount, total);
+          return photo;
+        });
         const results = await Promise.all(promises);
         newPhotos.push(...results);
-        completedCount += results.length;
-        onProgress?.(completedCount, total);
       }
       setPhotos(prev => [...newPhotos, ...prev]);
     } catch (err) { console.error(err); throw err; }

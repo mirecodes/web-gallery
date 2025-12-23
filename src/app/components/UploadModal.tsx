@@ -121,6 +121,7 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
     if (files.length === 1 && !title) return;
 
     setIsUploading(true);
+    setUploadProgress({ completed: 0, total: files.length }); // Initialize progress
     let targetAlbumId = selectedAlbumId;
     let newAlbumCreatedId: string | null = null;
 
@@ -145,6 +146,7 @@ export function UploadModal({ isOpen, onClose }: UploadModalProps) {
       try {
         if (files.length === 1) {
           await uploadAndAddPhoto(files[0], title, targetAlbumId, metadata || undefined);
+          setUploadProgress({ completed: 1, total: 1 }); // Update progress for single file
         } else {
           await batchUploadPhotos(files, targetAlbumId, (completed, total) => {
             setUploadProgress({ completed, total });
