@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { ArrowLeft, Search } from 'lucide-react';
+import { ArrowLeft, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useGallery } from '../hooks/useGallery';
 import { getOptimizedImageUrl } from '../services/cloudinary';
 import { Photo } from '../types';
@@ -12,9 +12,12 @@ interface GalleryProps {
   isEditMode?: boolean;
 }
 
+const ITEMS_PER_PAGE = 20;
+
 export function Gallery({ albumId, onBack, isEditMode = false }: GalleryProps) {
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [screenWidth, setScreenWidth] = useState(window.innerWidth);
   const { photos, albums, loading, error } = useGallery();
 
@@ -23,6 +26,11 @@ export function Gallery({ albumId, onBack, isEditMode = false }: GalleryProps) {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Reset page when search query or album changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, albumId]);
 
   const filteredPhotos = useMemo(() => {
     // 1. Filter and sort photos
@@ -71,10 +79,22 @@ export function Gallery({ albumId, onBack, isEditMode = false }: GalleryProps) {
     return layoutOptimizedPhotos;
   }, [photos, albums, albumId, searchQuery]);
 
+  const totalPages = Math.ceil(filteredPhotos.length / ITEMS_PER_PAGE);
+
+  const paginatedPhotos = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredPhotos.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredPhotos, currentPage]);
+
   const currentAlbum = useMemo(() => {
     if (!albumId) return null;
     return albums.find(a => a.id === albumId);
   }, [albums, albumId]);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   if (loading) {
     return <div className="text-white text-center py-12">Loading...</div>;
@@ -102,7 +122,7 @@ export function Gallery({ albumId, onBack, isEditMode = false }: GalleryProps) {
               <p className="text-white/60 mt-2">{currentAlbum.description}</p>
             </>
           ) : (
-            <div className="max-w-2xl mx-auto">
+            <div className="max-w-2xl mx-auto space-y-6">
               <div className="relative">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40" />
                 <input
@@ -113,13 +133,63 @@ export function Gallery({ albumId, onBack, isEditMode = false }: GalleryProps) {
                   className="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 rounded-full text-white placeholder-white/40 focus:outline-none focus:border-white/60 transition-colors"
                 />
               </div>
+
+              {/* Pagination Controls (Top) */}
+              {totalPages > 1 && (
+                <div className="flex justify-center items-center gap-4">
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="p-2 rounded-full hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-transparent text-white transition-colors"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+
+                  <div className="flex items-center gap-2">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      // Logic to show window of pages around current page
+                      let pageNum = i + 1;
+                      if (totalPages > 5) {
+                        if (currentPage > 3) {
+                          pageNum = currentPage - 2 + i;
+                        }
+                        if (pageNum > totalPages) {
+                          pageNum = totalPages - 4 + i;
+                        }
+                      }
+
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => handlePageChange(pageNum)}
+                          className={`w-8 h-8 rounded-full text-sm font-medium transition-all ${
+                            currentPage === pageNum
+                              ? 'bg-white text-black scale-110'
+                              : 'text-white/60 hover:text-white hover:bg-white/10'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="p-2 rounded-full hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-transparent text-white transition-colors"
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
 
         {/* Photo Grid */}
         <div className="grid grid-cols-2 md:grid-cols-6 gap-0">
-          {filteredPhotos.map((photo) => (
+          {paginatedPhotos.map((photo) => (
             <div
               key={photo.id}
               className={`p-1.5 ${
@@ -166,12 +236,35 @@ export function Gallery({ albumId, onBack, isEditMode = false }: GalleryProps) {
             <p>No photos found for your search.</p>
           </div>
         )}
+
+        {/* Pagination Controls (Bottom) - Optional, for convenience */}
+        {totalPages > 1 && (
+          <div className="flex justify-center items-center gap-4 mt-12">
+            <button
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="p-2 rounded-full hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-transparent text-white transition-colors"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <span className="text-white/60 text-sm">
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="p-2 rounded-full hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-transparent text-white transition-colors"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Lightbox */}
       {selectedPhoto && (
         <PhotoViewer
-          photos={filteredPhotos}
+          photos={filteredPhotos} // Pass all filtered photos so navigation works across pages
           initialIndex={filteredPhotos.findIndex(p => p.id === selectedPhoto.id)}
           onClose={() => setSelectedPhoto(null)}
           albumName={currentAlbum?.name}
