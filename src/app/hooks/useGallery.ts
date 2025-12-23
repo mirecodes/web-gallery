@@ -120,14 +120,6 @@ export const useGallery = () => {
 
   const updateAlbum = async (albumId: string, details: Partial<Album>, oldTheme?: string) => {
     try {
-      // If theme name has changed, update all albums that used the old theme.
-      if (details.theme && oldTheme && details.theme !== oldTheme) {
-        const themeUpdatePromises = albums
-          .filter(a => a.theme === oldTheme)
-          .map(a => fbUpdateAlbum(a.id, { theme: details.theme }));
-        await Promise.all(themeUpdatePromises);
-      }
-      
       // Update the primary album's details.
       await fbUpdateAlbum(albumId, details);
 
