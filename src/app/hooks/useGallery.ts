@@ -182,14 +182,27 @@ export const useGallery = () => {
     const image = new Image();
     image.src = imageUrl;
     await image.decode();
+
+    // Create photo object and remove undefined fields
     const newPhoto: Photo = {
       id: `photo_${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       url: imageUrl,
       date: new Date().toISOString().split('T')[0],
-      title, albumId, width: image.width, height: image.height,
+      title,
+      albumId,
+      width: image.width,
+      height: image.height,
       aspectRatio: image.width > image.height ? 'landscape' : 'portrait',
       ...exifData
     };
+
+    // Remove undefined values to prevent Firestore errors
+    Object.keys(newPhoto).forEach(key => {
+      if ((newPhoto as any)[key] === undefined) {
+        delete (newPhoto as any)[key];
+      }
+    });
+
     const chunkId = await addPhoto(newPhoto);
     return { ...newPhoto, _chunkId: chunkId };
   };
