@@ -56,3 +56,10 @@ export const getResponsiveThumbnailSize = (screenWidth: number, defaultSize: num
   
   return defaultSize;
 };
+
+/**
+ * Returns the appropriate album cover size based on screen width.
+ */
+export const getResponsiveAlbumCoverSize = (screenWidth: number): number => {
+  return getResponsiveThumbnailSize(screenWidth, THUMBNAIL_SIZES.ALBUM_COVER);
+};

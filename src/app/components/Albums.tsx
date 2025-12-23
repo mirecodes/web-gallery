@@ -1,9 +1,9 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useGallery } from '../hooks/useGallery';
 import { getOptimizedImageUrl } from '../services/cloudinary';
 import { FolderOpen, Plus, Edit2, ArrowRightLeft } from 'lucide-react';
 import { AlbumWithStats } from '../types';
-import { THUMBNAIL_SIZES } from '../config/imageConfig';
+import { getResponsiveAlbumCoverSize } from '../config/imageConfig';
 
 interface AlbumsProps {
   onAlbumClick: (albumId: string) => void;
@@ -15,6 +15,13 @@ interface AlbumsProps {
 
 export function Albums({ onAlbumClick, isEditMode = false, onAddNewAlbum, onEditAlbum, onTransferAlbum }: AlbumsProps) {
   const { albums, loading, error } = useGallery();
+  const [screenWidth, setScreenWidth] = useState(window.innerWidth);
+
+  useEffect(() => {
+    const handleResize = () => setScreenWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const groupedAlbums = useMemo(() => {
     if (!albums) return {};
@@ -45,7 +52,7 @@ export function Albums({ onAlbumClick, isEditMode = false, onAddNewAlbum, onEdit
             <div className="flex overflow-x-auto space-x-6 px-6 pb-4 -mx-6 scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent">
               <div className="w-6 flex-shrink-0"></div> {/* Start padding */}
               <div 
-                className="group w-[25rem] flex-shrink-0 cursor-pointer"
+                className="group w-[18rem] md:w-[25rem] flex-shrink-0 cursor-pointer"
                 onClick={onAddNewAlbum}
               >
                 <div className="relative aspect-[4/3] rounded-2xl overflow-hidden mb-3 border-2 border-dashed border-white/20 hover:border-white/40 transition-colors flex items-center justify-center">
@@ -67,7 +74,7 @@ export function Albums({ onAlbumClick, isEditMode = false, onAddNewAlbum, onEdit
               {themeAlbums.map((album) => (
                 <div 
                   key={album.id} 
-                  className="group w-[25rem] flex-shrink-0 cursor-pointer relative"
+                  className="group w-[18rem] md:w-[25rem] flex-shrink-0 cursor-pointer relative"
                   onClick={() => onAlbumClick(album.id)}
                 >
                   {/* Image Container */}
@@ -76,7 +83,7 @@ export function Albums({ onAlbumClick, isEditMode = false, onAddNewAlbum, onEdit
                       <img
                         src={getOptimizedImageUrl(
                           album.coverPhotoUrl, 
-                          THUMBNAIL_SIZES.ALBUM_COVER
+                          getResponsiveAlbumCoverSize(screenWidth)
                         )}
                         alt={album.name}
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
