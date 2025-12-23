@@ -1,6 +1,7 @@
 import { useGallery } from '../hooks/useGallery';
 import { ArrowLeft } from 'lucide-react';
 import { PhotoViewer } from './PhotoViewer';
+import { useMemo } from 'react';
 
 interface AlbumViewerProps {
   albumId: string;
@@ -11,7 +12,16 @@ interface AlbumViewerProps {
 export function AlbumViewer({ albumId, onBack, isEditMode = false }: AlbumViewerProps) {
   const { photos, albums } = useGallery();
   
-  const albumPhotos = photos.filter(p => p.albumId === albumId);
+  const albumPhotos = useMemo(() => {
+    return photos
+      .filter(p => p.albumId === albumId)
+      .sort((a, b) => {
+        const dateA = new Date(a.takenAt || a.date).getTime();
+        const dateB = new Date(b.takenAt || b.date).getTime();
+        return dateA - dateB; // Ascending order (oldest first)
+      });
+  }, [photos, albumId]);
+
   const currentAlbum = albums.find(a => a.id === albumId);
 
   if (!currentAlbum || albumPhotos.length === 0) {
