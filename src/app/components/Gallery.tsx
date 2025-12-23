@@ -96,6 +96,24 @@ export function Gallery({ albumId, onBack, isEditMode = false }: GalleryProps) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // Helper to generate page numbers
+  const getPageNumbers = () => {
+    const pages = [];
+    // Always show 5 pages if possible
+    let startPage = Math.max(1, currentPage - 2);
+    let endPage = Math.min(totalPages, startPage + 4);
+    
+    // Adjust startPage if we're near the end
+    if (endPage - startPage < 4) {
+      startPage = Math.max(1, endPage - 4);
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
+    }
+    return pages;
+  };
+
   if (loading) {
     return <div className="text-white text-center py-12">Loading...</div>;
   }
@@ -146,32 +164,19 @@ export function Gallery({ albumId, onBack, isEditMode = false }: GalleryProps) {
                   </button>
 
                   <div className="flex items-center gap-2">
-                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                      // Logic to show window of pages around current page
-                      let pageNum = i + 1;
-                      if (totalPages > 5) {
-                        if (currentPage > 3) {
-                          pageNum = currentPage - 2 + i;
-                        }
-                        if (pageNum > totalPages) {
-                          pageNum = totalPages - 4 + i;
-                        }
-                      }
-
-                      return (
-                        <button
-                          key={pageNum}
-                          onClick={() => handlePageChange(pageNum)}
-                          className={`w-8 h-8 rounded-full text-sm font-medium transition-all ${
-                            currentPage === pageNum
-                              ? 'bg-white text-black scale-110'
-                              : 'text-white/60 hover:text-white hover:bg-white/10'
-                          }`}
-                        >
-                          {pageNum}
-                        </button>
-                      );
-                    })}
+                    {getPageNumbers().map((pageNum) => (
+                      <button
+                        key={pageNum}
+                        onClick={() => handlePageChange(pageNum)}
+                        className={`w-8 h-8 rounded-full text-sm font-medium transition-all ${
+                          currentPage === pageNum
+                            ? 'bg-white text-black scale-110'
+                            : 'text-white/60 hover:text-white hover:bg-white/10'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    ))}
                   </div>
 
                   <button
