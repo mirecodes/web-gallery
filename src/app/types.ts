@@ -33,6 +33,7 @@ export interface Album {
   description: string;
   theme: string; // Theme name as a string
   createdAt: string;
+  coverPhotoId?: string; // ID of the photo to use as cover
   yearRange?: {
     start: number;
     end: number;

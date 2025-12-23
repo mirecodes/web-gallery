@@ -44,7 +44,17 @@ export const useGallery = () => {
   const albumsWithStats: AlbumWithStats[] = useMemo(() => {
     const albumsWithComputedStats = albums.map(album => {
       const albumPhotos = photos.filter(p => p.albumId === album.id);
-      const coverPhoto = albumPhotos.length > 0 ? albumPhotos[0] : undefined;
+      
+      // Determine cover photo:
+      // 1. If coverPhotoId is set and exists in photos, use it.
+      // 2. Fallback to the first photo in the album.
+      let coverPhoto: Photo | undefined;
+      if (album.coverPhotoId) {
+        coverPhoto = photos.find(p => p.id === album.coverPhotoId);
+      }
+      if (!coverPhoto && albumPhotos.length > 0) {
+        coverPhoto = albumPhotos[0];
+      }
       
       let yearRange: { start: number, end: number } | undefined = undefined;
       if (albumPhotos.length > 0) {
@@ -89,10 +99,10 @@ export const useGallery = () => {
     } catch (err) { console.error(err); throw err; }
   };
 
-  const updateAlbum = async (albumId: string, details: { name: string, description: string, theme: string }, oldTheme: string) => {
+  const updateAlbum = async (albumId: string, details: Partial<Album>, oldTheme?: string) => {
     try {
       // If theme name has changed, update all albums that used the old theme.
-      if (details.theme !== oldTheme) {
+      if (details.theme && oldTheme && details.theme !== oldTheme) {
         const themeUpdatePromises = albums
           .filter(a => a.theme === oldTheme)
           .map(a => fbUpdateAlbum(a.id, { theme: details.theme }));
@@ -102,9 +112,8 @@ export const useGallery = () => {
       // Update the primary album's details.
       await fbUpdateAlbum(albumId, details);
 
-      // Refetch data to ensure UI consistency.
-      // A more optimized approach would be to update local state, but refetching is safer.
-      await fetchData();
+      // Update local state optimistically
+      setAlbums(prev => prev.map(a => a.id === albumId ? { ...a, ...details } : a));
     } catch (err) {
       console.error("Failed to update album:", err);
       throw err;

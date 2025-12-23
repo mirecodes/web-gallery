@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove, collection, getDocs, writeBatch } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, setDoc, updateDoc, arrayUnion, collection, addDoc } from 'firebase/firestore';
 import { Photo, Album } from '../types';
 
 const firebaseConfig = {
@@ -17,16 +17,12 @@ const db = getFirestore(app);
 const GALLERY_COLLECTION = 'gallery';
 const METADATA_DOC = 'metadata';
 const PHOTO_CHUNKS_COLLECTION = 'photo_chunks';
+const DELETED_PHOTOS_COLLECTION = 'deleted_photos';
 const CHUNK_SIZE = 500;
 
 interface Metadata {
   albums: Album[];
   photoChunkIds: string[];
-}
-
-interface PhotoChunk {
-  id: string;
-  data: Photo[];
 }
 
 // --- Fetch Data ---
@@ -104,7 +100,7 @@ export const addPhoto = async (photo: Photo): Promise<string> => {
     targetChunkId = `chunk_${Date.now()}`;
     const newChunkRef = doc(db, GALLERY_COLLECTION, METADATA_DOC, PHOTO_CHUNKS_COLLECTION, targetChunkId);
     await setDoc(newChunkRef, { data: [photo] });
-    
+
     await updateDoc(metadataRef, {
       photoChunkIds: arrayUnion(targetChunkId)
     });

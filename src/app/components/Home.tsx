@@ -4,6 +4,7 @@ import { useGallery } from '../hooks/useGallery';
 import { getOptimizedImageUrl } from '../services/cloudinary';
 import { Photo } from '../types';
 import { PhotoViewer } from './PhotoViewer';
+import { calculateOptimalImageWidth, THUMBNAIL_SIZES } from '../config/imageConfig';
 
 interface HomeProps {
   isEditMode: boolean;
@@ -37,27 +38,21 @@ export function Home({ isEditMode }: HomeProps) {
   useEffect(() => {
     if (!currentPhoto) return;
 
-    const calculateOptimalWidth = () => {
-      const screenWidth = window.innerWidth;
-      const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
-      
-      // Use the full screen width to match PhotoViewer's logic for better caching.
-      const targetWidth = screenWidth * pixelRatio;
-      
-      const breakpoints = [400, 800, 1200, 2000, 2800];
-      let optimal = breakpoints.find(bp => bp >= targetWidth) || 2800;
-
-      const maxWidth = currentPhoto.aspectRatio === 'portrait' ? 2000 : 2800;
-      
-      setOptimalWidth(Math.min(optimal, maxWidth));
+    const updateWidth = () => {
+      const width = calculateOptimalImageWidth(
+        window.innerWidth,
+        window.devicePixelRatio,
+        currentPhoto.aspectRatio
+      );
+      setOptimalWidth(width);
     };
 
-    calculateOptimalWidth();
+    updateWidth();
 
     let resizeTimer: number;
     const handleResize = () => {
       clearTimeout(resizeTimer);
-      resizeTimer = window.setTimeout(calculateOptimalWidth, 150);
+      resizeTimer = window.setTimeout(updateWidth, 150);
     };
 
     window.addEventListener('resize', handleResize);
@@ -134,7 +129,7 @@ export function Home({ isEditMode }: HomeProps) {
                 onClick={() => setSelectedPhoto(photo)}
               >
                 <img
-                  src={getOptimizedImageUrl(photo.url, 400)}
+                  src={getOptimizedImageUrl(photo.url, THUMBNAIL_SIZES.HOME_GRID)}
                   alt={photo.title}
                   loading="lazy"
                   className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"

@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { getOptimizedImageUrl } from '../services/cloudinary';
-import { ArrowLeft, ChevronLeft, ChevronRight, Info, X, MapPin, Calendar, Camera, Aperture, Clock, Folder, Save, Loader2, Trash2 } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Info, X, MapPin, Calendar, Camera, Aperture, Clock, Folder, Save, Loader2, Trash2, Image as ImageIcon } from 'lucide-react';
 import { Photo } from '../types';
 import { useGallery } from '../hooks/useGallery';
 import { AlbumSelector } from './AlbumSelector';
+import { calculateOptimalImageWidth, THUMBNAIL_SIZES } from '../config/imageConfig';
 
 interface PhotoViewerProps {
   photos: Photo[];
@@ -18,18 +19,21 @@ export function PhotoViewer({ photos, initialIndex, onClose, albumName, showThum
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [showInfo, setShowInfo] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [optimalWidth, setOptimalWidth] = useState(1200);
+  const [optimalWidth, setOptimalWidth] = useState(1600);
   const thumbnailScrollRef = useRef<HTMLDivElement>(null);
   
-  const { albums, updatePhotoDetails, deletePhotoItem } = useGallery();
+  const { albums, updatePhotoDetails, deletePhotoItem, updateAlbum } = useGallery();
 
   const currentPhoto = photos[currentIndex];
 
+  // Editable state
   const [editedTitle, setEditedTitle] = useState(currentPhoto?.title || '');
   const [editedAlbumId, setEditedAlbumId] = useState(currentPhoto?.albumId || '');
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSettingCover, setIsSettingCover] = useState(false);
 
+  // Reset edited state when photo changes
   useEffect(() => {
     if (currentPhoto) {
       setEditedTitle(currentPhoto.title);
@@ -41,6 +45,21 @@ export function PhotoViewer({ photos, initialIndex, onClose, albumName, showThum
     if (!currentPhoto || !currentPhoto.albumId) return null;
     return albums.find(a => a.id === currentPhoto.albumId);
   }, [currentPhoto, albums]);
+
+  const isCoverPhoto = useMemo(() => {
+    if (!currentPhotoAlbum) return false;
+    // If album has explicit coverPhotoId, check against it.
+    if (currentPhotoAlbum.coverPhotoId) {
+      return currentPhotoAlbum.coverPhotoId === currentPhoto.id;
+    }
+    // Fallback: if no explicit cover, first photo is cover.
+    // However, we only want to show the "Set as Cover" button if it's NOT already the explicit cover.
+    // But for the visual indicator (glowing border), we might want to know if it IS the effective cover.
+    // The requirement says: "Set as Cover" button makes it the cover.
+    // And "thumbnail ... has glowing effect".
+    // Let's check if this photo is the *effective* cover.
+    return currentPhotoAlbum.coverPhotoUrl === currentPhoto.url;
+  }, [currentPhotoAlbum, currentPhoto]);
 
   const handleSave = async () => {
     if (!currentPhoto) return;
@@ -64,6 +83,7 @@ export function PhotoViewer({ photos, initialIndex, onClose, albumName, showThum
     if (!confirm(`Are you sure you want to delete "${currentPhoto.title}"? This action cannot be undone.`)) {
       return;
     }
+
     setIsDeleting(true);
     try {
       await deletePhotoItem(currentPhoto.id);
@@ -73,6 +93,20 @@ export function PhotoViewer({ photos, initialIndex, onClose, albumName, showThum
       alert("Failed to delete photo.");
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleSetAsCover = async () => {
+    if (!currentPhoto || !currentPhotoAlbum) return;
+    setIsSettingCover(true);
+    try {
+      await updateAlbum(currentPhotoAlbum.id, { coverPhotoId: currentPhoto.id });
+      // No need to alert, the UI will update
+    } catch (error) {
+      console.error("Failed to set cover photo:", error);
+      alert("Failed to set cover photo.");
+    } finally {
+      setIsSettingCover(false);
     }
   };
 
@@ -111,32 +145,21 @@ export function PhotoViewer({ photos, initialIndex, onClose, albumName, showThum
   useEffect(() => {
     if (!currentPhoto) return;
 
-    const calculateOptimalWidth = () => {
-      const screenWidth = window.innerWidth;
-      
-      // Limit pixel ratio to 2x to prevent excessive image sizes on high-density displays.
-      const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
-      const targetWidth = screenWidth * pixelRatio;
-      
-      // Snap to the next largest breakpoint for better cache efficiency.
-      const breakpoints = [400, 800, 1200, 2000, 2800];
-      
-      // Find the first breakpoint that is larger than or equal to the target width.
-      let optimal = breakpoints.find(bp => bp >= targetWidth) || 2800;
-
-      // Apply an absolute max width based on aspect ratio.
-      const maxWidth = currentPhoto.aspectRatio === 'portrait' ? 2000 : 2800;
-      
-      setOptimalWidth(Math.min(optimal, maxWidth));
+    const updateWidth = () => {
+      const width = calculateOptimalImageWidth(
+        window.innerWidth,
+        window.devicePixelRatio,
+        currentPhoto.aspectRatio
+      );
+      setOptimalWidth(width);
     };
 
-    calculateOptimalWidth();
+    updateWidth();
     
-    // Debounced resize handler.
     let resizeTimer: number;
     const handleResize = () => {
       clearTimeout(resizeTimer);
-      resizeTimer = window.setTimeout(calculateOptimalWidth, 150);
+      resizeTimer = window.setTimeout(updateWidth, 150);
     };
 
     window.addEventListener('resize', handleResize);
@@ -220,6 +243,16 @@ export function PhotoViewer({ photos, initialIndex, onClose, albumName, showThum
 
             {isEditMode && (
               <div className="mt-auto pt-6 space-y-3">
+                {/* Set as Cover Button */}
+                <button 
+                  onClick={handleSetAsCover} 
+                  disabled={isSettingCover || isCoverPhoto} 
+                  className={`w-full font-medium py-2 rounded flex items-center justify-center gap-2 transition-colors ${isCoverPhoto ? 'bg-green-600/20 text-green-400 cursor-default' : 'bg-zinc-800 text-white hover:bg-zinc-700'}`}
+                >
+                  {isSettingCover ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
+                  {isCoverPhoto ? 'Current Cover Image' : 'Set as Cover Image'}
+                </button>
+
                 <button onClick={handleSave} disabled={isSaving} className="w-full bg-white text-black font-medium py-2 rounded hover:bg-white/90 disabled:opacity-50 flex items-center justify-center gap-2">
                   {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                   {isSaving ? 'Saving...' : 'Save Changes'}
@@ -234,7 +267,34 @@ export function PhotoViewer({ photos, initialIndex, onClose, albumName, showThum
         </div>
       </div>
 
-      {showThumbnails && (<div className={`h-20 bg-black/80 backdrop-blur-sm border-t border-white/10 flex items-center justify-center px-4 z-20 transition-transform duration-300 ${isFullscreen ? 'translate-y-full' : 'translate-y-0'}`} onClick={(e) => e.stopPropagation()}><div ref={thumbnailScrollRef} className="flex gap-2 overflow-x-auto max-w-full px-4 py-2 scrollbar-hide">{photos.map((photo, index) => (<button key={photo.id} onClick={() => setCurrentIndex(index)} className={`relative flex-shrink-0 w-12 h-12 rounded overflow-hidden transition-all duration-300 ${index === currentIndex ? 'ring-2 ring-white scale-110 opacity-100' : 'opacity-40 hover:opacity-70 hover:scale-105'}`}><img src={getOptimizedImageUrl(photo.url, 100)} alt="" className="w-full h-full object-cover" /></button>))}</div></div>)}
+      {showThumbnails && (
+        <div className={`h-20 bg-black/80 backdrop-blur-sm border-t border-white/10 flex items-center justify-center px-4 z-20 transition-transform duration-300 ${isFullscreen ? 'translate-y-full' : 'translate-y-0'}`} onClick={(e) => e.stopPropagation()}>
+          <div ref={thumbnailScrollRef} className="flex gap-2 overflow-x-auto max-w-full px-4 py-2 scrollbar-hide">
+            {photos.map((photo, index) => {
+              // Check if this photo is the cover photo for the current album context
+              // We need to know if this photo is the cover of the album we are viewing.
+              // Since we are in PhotoViewer, we might be viewing photos from a specific album or all photos.
+              // If albumName is provided, we can assume we are in an album context, but we need the album object to be sure.
+              // Let's use the photo's albumId to find the album and check.
+              const photoAlbum = albums.find(a => a.id === photo.albumId);
+              const isThisPhotoCover = photoAlbum && photoAlbum.coverPhotoUrl === photo.url;
+
+              return (
+                <button 
+                  key={photo.id} 
+                  onClick={() => setCurrentIndex(index)} 
+                  className={`relative flex-shrink-0 w-12 h-12 rounded overflow-hidden transition-all duration-300 
+                    ${index === currentIndex ? 'ring-2 ring-white scale-110 opacity-100' : 'opacity-40 hover:opacity-70 hover:scale-105'}
+                    ${isEditMode && isThisPhotoCover ? 'ring-2 ring-yellow-400 ring-offset-1 ring-offset-black animate-pulse' : ''}
+                  `}
+                >
+                  <img src={getOptimizedImageUrl(photo.url, THUMBNAIL_SIZES.VIEWER_THUMBNAIL)} alt="" className="w-full h-full object-cover" />
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

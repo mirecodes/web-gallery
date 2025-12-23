@@ -1,9 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { ArrowLeft, Search } from 'lucide-react';
 import { useGallery } from '../hooks/useGallery';
 import { getOptimizedImageUrl } from '../services/cloudinary';
 import { Photo } from '../types';
 import { PhotoViewer } from './PhotoViewer';
+import { THUMBNAIL_SIZES, getResponsiveThumbnailSize } from '../config/imageConfig';
 
 interface GalleryProps {
   albumId?: string;
@@ -14,7 +15,14 @@ interface GalleryProps {
 export function Gallery({ albumId, onBack, isEditMode = false }: GalleryProps) {
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [screenWidth, setScreenWidth] = useState(window.innerWidth);
   const { photos, albums, loading, error } = useGallery();
+
+  useEffect(() => {
+    const handleResize = () => setScreenWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const filteredPhotos = useMemo(() => {
     // 1. Filter and sort photos
@@ -129,7 +137,15 @@ export function Gallery({ albumId, onBack, isEditMode = false }: GalleryProps) {
                 onClick={() => setSelectedPhoto(photo)}
               >
                 <img
-                  src={getOptimizedImageUrl(photo.url, photo.aspectRatio === 'portrait' ? 400 : 800)}
+                  src={getOptimizedImageUrl(
+                    photo.url, 
+                    getResponsiveThumbnailSize(
+                      screenWidth, 
+                      photo.aspectRatio === 'portrait' 
+                        ? THUMBNAIL_SIZES.GALLERY_GRID_PORTRAIT 
+                        : THUMBNAIL_SIZES.GALLERY_GRID_LANDSCAPE
+                    )
+                  )}
                   alt={photo.title}
                   loading="lazy"
                   className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"

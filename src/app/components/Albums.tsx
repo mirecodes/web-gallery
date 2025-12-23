@@ -3,6 +3,7 @@ import { useGallery } from '../hooks/useGallery';
 import { getOptimizedImageUrl } from '../services/cloudinary';
 import { FolderOpen, Plus, Edit2, ArrowRightLeft } from 'lucide-react';
 import { AlbumWithStats } from '../types';
+import { THUMBNAIL_SIZES } from '../config/imageConfig';
 
 interface AlbumsProps {
   onAlbumClick: (albumId: string) => void;
@@ -73,7 +74,10 @@ export function Albums({ onAlbumClick, isEditMode = false, onAddNewAlbum, onEdit
                   <div className="relative aspect-[4/3] rounded-2xl overflow-hidden mb-3">
                     {album.coverPhotoUrl ? (
                       <img
-                        src={getOptimizedImageUrl(album.coverPhotoUrl, 800)}
+                        src={getOptimizedImageUrl(
+                          album.coverPhotoUrl, 
+                          THUMBNAIL_SIZES.ALBUM_COVER
+                        )}
                         alt={album.name}
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                         loading="lazy"
