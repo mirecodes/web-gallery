@@ -57,7 +57,7 @@ export function Navigation({ activeTab, onTabChange, user, isEditMode, onEditMod
         isMobileMenuOpen ? 'bg-zinc-900' : 'bg-black/80 backdrop-blur-md'
       }`}
     >
-      <div className="max-w-7xl mx-auto px-6">
+      <div className="w-full px-6">
         <div className="flex items-center justify-between h-14">
           {/* Logo */}
           <div className="text-white font-bold tracking-wider cursor-pointer z-50" onClick={() => handleTabClick('home')}>
@@ -65,7 +65,7 @@ export function Navigation({ activeTab, onTabChange, user, isEditMode, onEditMod
           </div>
 
           {/* Desktop Navigation Tabs */}
-          <div className="hidden md:flex gap-8">
+          <div className="hidden md:flex gap-8 absolute left-1/2 transform -translate-x-1/2">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
@@ -120,7 +120,7 @@ export function Navigation({ activeTab, onTabChange, user, isEditMode, onEditMod
                 onClick={handleLogin}
                 className="text-sm text-white/60 hover:text-white"
               >
-                Admin Login
+                Authenticate
               </button>
             )}
           </div>
@@ -198,7 +198,7 @@ export function Navigation({ activeTab, onTabChange, user, isEditMode, onEditMod
                   onClick={handleLogin}
                   className="text-base text-white/60 hover:text-white py-2 text-left"
                 >
-                  Admin Login
+                  Authenticate
                 </button>
               )}
             </div>
