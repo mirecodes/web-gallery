@@ -25,12 +25,30 @@ export function Albums({ onAlbumClick, isEditMode = false, onAddNewAlbum, onEdit
 
   const groupedAlbums = useMemo(() => {
     if (!albums) return {};
-    return albums.reduce((acc, album) => {
+
+    // 1. Group albums by theme
+    const grouped = albums.reduce((acc, album) => {
       const theme = album.theme || 'Uncategorized';
       if (!acc[theme]) {
         acc[theme] = [];
       }
       acc[theme].push(album);
+      return acc;
+    }, {} as Record<string, AlbumWithStats[]>);
+
+    // 2. Sort themes by the latest photo date of any album within that theme
+    const sortedThemes = Object.entries(grouped).sort(([, albumsA], [, albumsB]) => {
+      // Find the max date in theme A
+      const maxDateA = Math.max(...albumsA.map(a => a.latestPhotoDate ? new Date(a.latestPhotoDate).getTime() : 0));
+      // Find the max date in theme B
+      const maxDateB = Math.max(...albumsB.map(b => b.latestPhotoDate ? new Date(b.latestPhotoDate).getTime() : 0));
+
+      return maxDateB - maxDateA;
+    });
+
+    // 3. Reconstruct the object with sorted keys
+    return sortedThemes.reduce((acc, [theme, albums]) => {
+      acc[theme] = albums; // Albums within theme are already sorted by useGallery
       return acc;
     }, {} as Record<string, AlbumWithStats[]>);
   }, [albums]);

@@ -44,4 +44,5 @@ export interface Album {
 export interface AlbumWithStats extends Album {
   coverPhotoUrl?: string;
   photoCount: number;
+  latestPhotoDate?: string; // Date of the most recent photo in the album
 }

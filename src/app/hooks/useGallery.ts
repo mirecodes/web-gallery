@@ -57,9 +57,16 @@ export const useGallery = () => {
       }
       
       let yearRange: { start: number, end: number } | undefined = undefined;
+      let latestPhotoDate: string | undefined = undefined;
+
       if (albumPhotos.length > 0) {
         const years = albumPhotos.map(p => new Date(p.takenAt || p.date).getFullYear());
         yearRange = { start: Math.min(...years), end: Math.max(...years) };
+        
+        // Find the latest photo date
+        const dates = albumPhotos.map(p => new Date(p.takenAt || p.date).getTime());
+        const maxDate = Math.max(...dates);
+        latestPhotoDate = new Date(maxDate).toISOString();
       }
 
       return {
@@ -67,13 +74,20 @@ export const useGallery = () => {
         photoCount: albumPhotos.length,
         coverPhotoUrl: coverPhoto?.url,
         yearRange: yearRange,
+        latestPhotoDate: latestPhotoDate,
       };
     });
 
     return albumsWithComputedStats.sort((a, b) => {
-      const endYearA = a.yearRange?.end || 0;
-      const endYearB = b.yearRange?.end || 0;
-      if (endYearA !== endYearB) return endYearB - endYearA;
+      // Sort by latest photo date descending
+      const dateA = a.latestPhotoDate ? new Date(a.latestPhotoDate).getTime() : 0;
+      const dateB = b.latestPhotoDate ? new Date(b.latestPhotoDate).getTime() : 0;
+      
+      if (dateA !== dateB) {
+        return dateB - dateA;
+      }
+      
+      // Fallback to name
       return a.name.localeCompare(b.name);
     });
   }, [albums, photos]);
