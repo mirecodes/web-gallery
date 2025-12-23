@@ -10,7 +10,7 @@ interface AlbumViewerProps {
 }
 
 export function AlbumViewer({ albumId, onBack, isEditMode = false }: AlbumViewerProps) {
-  const { photos, albums } = useGallery();
+  const { photos, albums, updatePhotoDetails, deletePhotoItem, updateAlbum } = useGallery();
   
   const albumPhotos = useMemo(() => {
     return photos
@@ -43,6 +43,10 @@ export function AlbumViewer({ albumId, onBack, isEditMode = false }: AlbumViewer
       albumName={currentAlbum.name}
       showThumbnails={true}
       isEditMode={isEditMode}
+      albums={albums}
+      updatePhotoDetails={updatePhotoDetails}
+      deletePhotoItem={deletePhotoItem}
+      updateAlbum={updateAlbum}
     />
   );
 }

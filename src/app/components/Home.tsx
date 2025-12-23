@@ -14,7 +14,7 @@ export function Home({ isEditMode }: HomeProps) {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [optimalWidth, setOptimalWidth] = useState(1200);
-  const { photos, loading, error } = useGallery();
+  const { photos, albums, loading, error, updatePhotoDetails, deletePhotoItem, updateAlbum } = useGallery();
 
   const sortedPhotos = photos.sort((a, b) => {
     const dateA = new Date(a.takenAt || a.date).getTime();
@@ -148,6 +148,10 @@ export function Home({ isEditMode }: HomeProps) {
           onClose={() => setSelectedPhoto(null)}
           albumName={undefined} // Home tab doesn't have a specific album context
           isEditMode={isEditMode}
+          albums={albums}
+          updatePhotoDetails={updatePhotoDetails}
+          deletePhotoItem={deletePhotoItem}
+          updateAlbum={updateAlbum}
         />
       )}
     </>

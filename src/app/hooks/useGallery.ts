@@ -85,6 +85,11 @@ export const useGallery = () => {
       
       await updatePhoto(photoId, photoToUpdate._chunkId, details);
       setPhotos(prev => prev.map(p => p.id === photoId ? { ...p, ...details } : p));
+      
+      // If albumId changed, we might need to refresh albums to update counts/covers if needed,
+      // but local state update above handles the photo list.
+      // However, if the photo was a cover photo of the old album, or becomes one for the new album,
+      // the derived albumsWithStats will handle it automatically because it depends on [albums, photos].
     } catch (err) { console.error(err); throw err; }
   };
 

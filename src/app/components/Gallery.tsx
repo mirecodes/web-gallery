@@ -19,7 +19,7 @@ export function Gallery({ albumId, onBack, isEditMode = false }: GalleryProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [screenWidth, setScreenWidth] = useState(window.innerWidth);
-  const { photos, albums, loading, error } = useGallery();
+  const { photos, albums, loading, error, updatePhotoDetails, deletePhotoItem, updateAlbum } = useGallery();
 
   useEffect(() => {
     const handleResize = () => setScreenWidth(window.innerWidth);
@@ -274,6 +274,10 @@ export function Gallery({ albumId, onBack, isEditMode = false }: GalleryProps) {
           onClose={() => setSelectedPhoto(null)}
           albumName={currentAlbum?.name}
           isEditMode={isEditMode}
+          albums={albums}
+          updatePhotoDetails={updatePhotoDetails}
+          deletePhotoItem={deletePhotoItem}
+          updateAlbum={updateAlbum}
         />
       )}
     </>

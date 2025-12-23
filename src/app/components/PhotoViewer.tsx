@@ -1,8 +1,7 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo, MouseEvent } from 'react';
 import { getOptimizedImageUrl } from '../services/cloudinary';
 import { ArrowLeft, ChevronLeft, ChevronRight, Info, X, MapPin, Calendar, Camera, Aperture, Clock, Folder, Save, Loader2, Trash2, Image as ImageIcon } from 'lucide-react';
-import { Photo } from '../types';
-import { useGallery } from '../hooks/useGallery';
+import { Photo, Album } from '../types';
 import { AlbumSelector } from './AlbumSelector';
 import { calculateOptimalImageWidth, THUMBNAIL_SIZES } from '../config/imageConfig';
 
@@ -13,17 +12,30 @@ interface PhotoViewerProps {
   albumName?: string;
   showThumbnails?: boolean;
   isEditMode?: boolean;
+  albums: Album[];
+  updatePhotoDetails: (photoId: string, details: Partial<Pick<Photo, 'title' | 'albumId'>>) => Promise<void>;
+  deletePhotoItem: (photoId: string) => Promise<void>;
+  updateAlbum: (albumId: string, details: Partial<Album>, oldTheme?: string) => Promise<void>;
 }
 
-export function PhotoViewer({ photos, initialIndex, onClose, albumName, showThumbnails = false, isEditMode = false }: PhotoViewerProps) {
+export function PhotoViewer({ 
+  photos, 
+  initialIndex, 
+  onClose, 
+  albumName, 
+  showThumbnails = false, 
+  isEditMode = false,
+  albums,
+  updatePhotoDetails,
+  deletePhotoItem,
+  updateAlbum
+}: PhotoViewerProps) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [showInfo, setShowInfo] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [optimalWidth, setOptimalWidth] = useState(1600);
   const thumbnailScrollRef = useRef<HTMLDivElement>(null);
   
-  const { albums, updatePhotoDetails, deletePhotoItem, updateAlbum } = useGallery();
-
   const currentPhoto = photos[currentIndex];
 
   // Editable state
@@ -61,7 +73,11 @@ export function PhotoViewer({ photos, initialIndex, onClose, albumName, showThum
     return currentPhotoAlbum.coverPhotoUrl === currentPhoto.url;
   }, [currentPhotoAlbum, currentPhoto]);
 
-  const handleSave = async () => {
+  const handleSave = async (e?: MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     if (!currentPhoto) return;
     setIsSaving(true);
     try {
@@ -69,7 +85,8 @@ export function PhotoViewer({ photos, initialIndex, onClose, albumName, showThum
         title: editedTitle,
         albumId: editedAlbumId,
       });
-      setShowInfo(false);
+      // Don't close the info panel after saving
+      // setShowInfo(false); 
     } catch (error) {
       console.error("Failed to save photo details:", error);
       alert("Failed to save changes.");
@@ -127,7 +144,18 @@ export function PhotoViewer({ photos, initialIndex, onClose, albumName, showThum
         else if (showInfo) setShowInfo(false);
         else onClose();
       }
-      if (e.key === 'i') setShowInfo(s => !s);
+      if (e.key === 'i') {
+        // Prevent toggling info panel when typing in an input or textarea
+        const activeElement = document.activeElement as HTMLElement;
+        const isTyping = activeElement && (
+          activeElement.tagName === 'INPUT' || 
+          activeElement.tagName === 'TEXTAREA' || 
+          activeElement.isContentEditable
+        );
+        if (!isTyping) {
+          setShowInfo(s => !s);
+        }
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
